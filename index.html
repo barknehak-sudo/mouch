@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Mouch! — a private migraine diary that learns your patterns. Mouch it out!">
+<meta name="theme-color" content="#F6F4F0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mouch!">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Mouch!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Geist:wght@300;400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column (max 480px) of bento tiles; floating pill tab bar + coral "Ouch!" button. Check-in is a full-screen indigo flow, Attack a dim one. */
+:root{
+  --coral:#FF786E; --indigo:#22243B; --lav:#9B82F6; --mist:#A9DFD0; --cloud:#F6F4F0;
+  --bg:#F6F4F0; --card:#FFFFFF; --card-2:#F0EDE7; --line:#E6E1D8; --ink:#1C1E33; --ink-2:#4A4C61; --ink-3:#77788C;
+  --coral-tint:#FFDDD8; --lav-tint:#E4DDFD; --mist-tint:#D6F0E7; --on-coral:#22243B; --on-ink:#F6F4F0;
+  --warn:#9A5B00; --warn-bg:#FCEBCF; --danger:#B83A31;
+  --shadow:0 10px 30px rgba(34,36,59,.12); --edge:0 0 0 1px rgba(28,30,51,.05), 0 8px 20px rgba(28,30,51,.05);
+  --r1:#E5544B; --r2:#F0675D; --r3:#FF786E; --r4:#FF9C92; --r5:#D9D3C9; --r6:#C6E6DC; --r7:#A9DFD0; --r8:#C4B6FA; --r9:#AF9BF8; --r10:#9B82F6;
+  --f-ui:'Geist','Noto Sans Ethiopic',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-brand:'Bricolage Grotesque','Geist',system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121326; --card:#25273F; --card-2:#333551; --line:#40426A; --ink:#FBF9F5; --ink-2:#CBCBDC; --ink-3:#9D9EB5;
+  --coral-tint:#47293A; --lav-tint:#2F2A57; --mist-tint:#1E3A3C; --on-ink:#16172A; --warn:#F2C27B; --warn-bg:#3A3022; --danger:#FF9C92;
+  --shadow:0 10px 30px rgba(0,0,0,.35); --edge:0 0 0 1px rgba(255,255,255,.07); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#121326; --card:#25273F; --card-2:#333551; --line:#40426A; --ink:#FBF9F5; --ink-2:#CBCBDC; --ink-3:#9D9EB5;
+  --coral-tint:#47293A; --lav-tint:#2F2A57; --mist-tint:#1E3A3C; --on-ink:#16172A; --warn:#F2C27B; --warn-bg:#3A3022; --danger:#FF9C92;
+  --shadow:0 10px 30px rgba(0,0,0,.35); --edge:0 0 0 1px rgba(255,255,255,.07); color-scheme:dark }
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+*{box-sizing:border-box}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:2.5px solid var(--lav);outline-offset:3px}
+.app{max-width:480px;margin:0 auto;padding-block:12px 140px;display:flex;flex-direction:column;gap:10px}
+h1,h2,h3,p{margin:0}
+.eth{font-family:'Noto Sans Ethiopic',var(--f-ui)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-2)}
+.small{font-size:14px;line-height:20px;color:var(--ink-2)}
+.tiny{font-size:12.5px;line-height:17px;color:var(--ink-2)}
+.label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.s{width:18px;height:18px}
+
+/* header */
+.head{display:flex;justify-content:space-between;align-items:flex-start;padding:18px 2px 10px;gap:12px}
+.hello{font-weight:400;font-size:clamp(36px,10vw,44px);line-height:1.02;letter-spacing:-.035em;text-wrap:balance}
+.date{margin-top:8px;font-size:15px;color:var(--ink-2)}
+.roundbtn{width:52px;height:52px;border-radius:18px;background:var(--card);display:grid;place-items:center;color:var(--ink);flex:none}
+.wordmark{font-family:var(--f-brand);font-weight:800;letter-spacing:-.04em}
+.wordmark i{font-style:normal;color:var(--coral)}
+
+/* tiles */
+.tile{background:var(--card);box-shadow:var(--edge);border-radius:24px;padding:16px 16px 18px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tile.coral{background:var(--coral);color:var(--on-coral)}
+.tile.coral .small,.tile.coral .tiny,.tile.coral .label{color:var(--on-coral)}
+.tile.lav{background:var(--lav-tint)}
+.tile.mist{background:var(--mist-tint)}
+.tile.ink{background:var(--indigo);color:#F6F4F0}
+.tile.ink .small,.tile.ink .tiny,.tile.ink .label{color:#C9C9DA}
+.t-head{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:500;gap:8px}
+.t-big{font-weight:400;font-size:30px;line-height:1.05;letter-spacing:-.03em}
+.t-huge{font-weight:600;font-size:64px;line-height:.95;letter-spacing:-.05em}
+.bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.span2{grid-column:span 2}
+.panel{background:var(--lav-tint);border-radius:32px;padding:20px 18px;display:flex;flex-direction:column;gap:14px}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sec-h h2{font-weight:400;font-size:24px;letter-spacing:-.02em}
+.link{color:var(--ink);font-weight:500;text-decoration:underline;text-underline-offset:3px;font-size:14px;min-height:44px;display:inline-flex;align-items:center}
+
+/* orb */
+.orb{position:absolute;pointer-events:none}
+.orb::before,.orb::after{content:"";position:absolute;border-radius:50%}
+.orb::before{inset:-22%;background:var(--lav);opacity:.55;filter:blur(28px)}
+.orb::after{inset:12%;background:var(--coral);filter:blur(1.5px)}
+.tile.coral .orb::after{background:#FFB3A9}
+.tile.coral .orb::before{background:#FFF3E9;opacity:.5}
+
+/* pills & chips */
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{min-height:44px;padding:0 18px;border-radius:999px;border:1.2px solid var(--ink);display:inline-flex;align-items:center;gap:8px;font-size:14.5px;font-weight:500;white-space:nowrap}
+.pill.on{background:var(--ink);color:var(--on-ink)}
+.chip{min-height:48px;padding:0 18px;border-radius:999px;background:var(--card-2);display:inline-flex;align-items:center;gap:8px;font-size:15.5px;font-weight:500}
+.chip.on{background:var(--ink);color:var(--on-ink)}
+.chip.add{background:transparent;border:1.4px dashed var(--ink-3);color:var(--ink-2)}
+.tag{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(34,36,59,.08)}
+.tile.ink .tag,.dark .tag{background:rgba(246,244,240,.12)}
+
+/* buttons */
+.btn{min-height:52px;padding:0 22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:15.5px;background:var(--card-2);color:var(--ink)}
+.btn.dark{background:var(--ink);color:var(--on-ink)}
+.btn.coral{background:var(--coral);color:var(--on-coral)}
+.btn.ghost{background:transparent;border:1.2px solid var(--ink)}
+.btn.block{width:100%}
+.btn.sm{min-height:44px;padding:0 16px;font-size:14px}
+.btn.danger{background:transparent;color:var(--danger);border:1.2px solid currentColor}
+.row2{display:flex;gap:8px}.row2>*{flex:1}
+
+/* rating */
+.rate{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.rate button{height:60px;border-radius:20px;background:var(--card-2);font-size:22px;font-weight:500;position:relative;font-variant-numeric:tabular-nums}
+.rate button::after{content:"";position:absolute;left:38%;right:38%;bottom:9px;height:4px;border-radius:2px;background:var(--rc)}
+.rate button.on{background:var(--rc);color:#22243B;font-weight:600}
+.rate button.on::after{display:none}
+.rate.picked button:not(.on){color:var(--ink-3)}
+.ends{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2)}
+
+/* toggle / stepper / seg */
+.tog{width:56px;height:34px;border-radius:999px;background:var(--card-2);border:1px solid var(--line);position:relative;flex:none}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--ink-3);transition:left .18s}
+.tog.on{background:var(--lav);border-color:var(--lav)}
+.tog.on::after{left:25px;background:#FDFBF8}
+.step{display:inline-flex;align-items:center;background:var(--card-2);border-radius:999px;padding:3px}
+.step button{width:46px;height:46px;border-radius:50%;display:grid;place-items:center}
+.step output{min-width:64px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;background:var(--card-2);border-radius:999px;padding:4px}
+.seg button{min-height:44px;border-radius:999px;font-size:14px;font-weight:500;color:var(--ink-2);padding:0 6px}
+.seg button.on{background:var(--ink);color:var(--on-ink)}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:58px;padding:6px 0;border-top:1px solid var(--line)}
+.lrow:first-child{border-top:0}
+.lrow>span{min-width:0}
+
+/* tab bar */
+.dock{position:fixed;left:0;right:0;bottom:0;padding:0 max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;justify-content:center;pointer-events:none;z-index:20}
+.dock-in{width:100%;max-width:480px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+.dock-row{display:flex;gap:8px;align-items:center}
+.tabbar{flex:1;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow)}
+.tab{height:52px;min-width:52px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--ink-2)}
+.tab.on{background:var(--card-2);color:var(--ink);padding:0 16px 0 6px;font-weight:600;font-size:15px}
+.tab.on .dot{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:grid;place-items:center}
+.ouch{width:64px;height:64px;border-radius:50%;background:var(--coral);color:#22243B;font-family:var(--f-brand);font-weight:800;font-size:16px;letter-spacing:-.02em;box-shadow:var(--shadow);flex:none}
+.ouch.live{width:auto;padding:0 18px;border-radius:999px;font-family:var(--f-ui);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
+.livebar{display:flex;align-items:center;justify-content:space-between;background:var(--indigo);color:#F6F4F0;border-radius:22px;min-height:56px;padding:0 8px 0 18px;box-shadow:var(--shadow);font-size:14.5px}
+.livebar b{font-weight:600}
+
+/* ring */
+.ring{position:relative;display:grid;place-items:center}
+.ring svg{position:absolute;inset:0}
+.ring span{font-weight:500}
+
+/* toast / banner */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(104px + env(safe-area-inset-bottom,0px));background:var(--indigo);color:#F6F4F0;border-radius:999px;padding:14px 22px;font-weight:600;z-index:40;box-shadow:var(--shadow);display:flex;gap:8px;align-items:center}
+.notif{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));width:min(448px,calc(100% - 24px));background:rgba(34,36,59,.96);color:#F6F4F0;border-radius:24px;padding:14px 16px;z-index:50;box-shadow:0 18px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:6px}
+.notif .nh{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#C9C9DA}
+.notif .appi{width:22px;height:22px;border-radius:7px;overflow:hidden;display:grid;place-items:center}
+.notif p{font-size:15px;line-height:21px}
+.notif .na{display:flex;gap:8px;margin-top:4px}
+.notif .na button{flex:1;min-height:44px;border-radius:14px;background:rgba(246,244,240,.12);font-weight:600;font-size:14px}
+@media (prefers-reduced-motion:no-preference){.notif{animation:drop .35s ease-out}.toast{animation:rise .25s ease-out}}
+@keyframes drop{from{transform:translate(-50%,-24px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+@keyframes rise{from{transform:translate(-50%,10px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(22,23,42,.55);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:480px;background:var(--bg);border-radius:32px 32px 0 0;padding:10px 18px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;max-height:88%;overflow:auto}
+.grab{width:42px;height:5px;border-radius:3px;background:var(--line);align-self:center}
+
+/* full-screen flows */
+.full{position:fixed;inset:0;z-index:30;overflow:auto;display:flex;justify-content:center;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+.full-in{width:100%;max-width:480px;min-height:100%;display:flex;flex-direction:column;padding-block:12px 24px}
+.ci{background:#22243B;color:#F6F4F0}
+.ci .muted,.ci .small{color:#C2C2D6}
+.ci-top{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:6px}
+.ci-top .ctx{text-align:center;font-size:13.5px;color:#C2C2D6}
+.ci-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#F6F4F0}
+.ci-later{min-height:48px;padding:0 14px;border-radius:999px;font-weight:600;font-size:14.5px;color:#F6F4F0}
+.ci-q{font-weight:500;font-size:clamp(28px,7.6vw,34px);line-height:1.15;letter-spacing:-.02em;text-align:center;text-wrap:balance}
+.ci-hint{text-align:center;font-size:16px;color:#C2C2D6;margin-top:10px}
+.ci-ans{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.cpill{min-height:60px;padding:10px 24px;border-radius:999px;background:#3A3C5A;color:#F6F4F0;font-size:16.5px;font-weight:500;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2}
+.cpill small{font-size:13px;color:#C9C9DA;font-weight:400;margin-top:2px}
+.cpill.on{background:var(--coral);color:#22243B}
+.cpill.on small{color:#22243B}
+.cpill.wide{width:100%}
+.cpill.row{flex-direction:row;gap:6px}
+.cpill.sm{min-height:48px;padding:6px 16px;font-size:15px}
+.ci-g{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#C2C2D6;margin:18px 0 10px}
+.cuis{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.cuis::-webkit-scrollbar{display:none}
+.cuis-b{flex:none;min-height:44px;padding:0 16px;border-radius:999px;border:1.4px solid #5A5C80;color:#E6E6F0;font-weight:500;font-size:14.5px}
+.cuis-b.on{background:#F6F4F0;color:#22243B;border-color:#F6F4F0}
+.ci-sum{margin-top:16px;background:#2E3050;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:15px}
+.mbar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:#3A3C5A}
+.mbar i{display:block;height:100%}.mbar .c{background:var(--coral)}.mbar .p{background:var(--mist)}
+.csq{width:calc((100% - 40px)/5);aspect-ratio:1;max-width:76px;border-radius:24px;background:#3A3C5A;font-size:24px;font-weight:500;color:#F6F4F0}
+.csq.six{width:calc((100% - 50px)/6)}
+.csq.on{background:var(--coral);color:#22243B}
+.ci-foot{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dots{display:flex;gap:6px}.dots i{width:7px;height:7px;border-radius:50%;background:#55577A}.dots i.on{background:var(--coral)}
+.arrow{min-width:84px;height:52px;border-radius:999px;border:1.4px solid #F6F4F0;display:grid;place-items:center;color:#F6F4F0;padding:0 16px;font-weight:600}
+.arrow.fill{background:#F6F4F0;color:#22243B}
+.ci .step{background:#3A3C5A}
+.ci textarea{width:100%;min-height:150px;border-radius:24px;border:0;background:#3A3C5A;color:#F6F4F0;padding:16px;font-size:16px;resize:none}
+.ci .seg{background:#3A3C5A}.ci .seg button{color:#C9C9DA}.ci .seg button.on{background:var(--coral);color:#22243B}
+.ci input[type=text]{min-height:52px;border-radius:999px;border:0;background:#3A3C5A;color:#F6F4F0;padding:0 18px;flex:1;min-width:0}
+
+/* attack — dim, no motion */
+.atk{background:#0F1020;color:#9C9AB0}
+.atk *{animation:none!important;transition:none!important}
+.atk .muted,.atk .small,.atk .label{color:#7E7C94}
+.atk .card{background:#17182B;border-radius:22px;padding:14px}
+.atk .chip{background:#1C1D33;color:#9C9AB0}
+.atk .chip.on{background:#34364F;color:#C4C1D3}
+.atk .btn{background:#1C1D33;color:#B3B0C4}
+.atk .btn.dark{background:#3A3550;color:#CFCBDC}
+.atk .step{background:#1C1D33}
+.atk .seg{background:#1C1D33}.atk .seg button{color:#8A889F}.atk .seg button.on{background:#3A3550;color:#CFCBDC}
+.atk .lrow{border-color:#1F2035}
+.atk .tog{background:#1C1D33;border-color:#2A2B44}
+.timer{font-weight:300;font-size:76px;line-height:1;letter-spacing:-.04em;color:#B9B6C9}
+.hm .rg{fill:#1C1D33;stroke:#3A3B57;stroke-width:1.5;cursor:pointer}
+.hm .rg.on{fill:#5A3340;stroke:#7E4A55}
+.hm .ol{fill:none;stroke:#4A4B66;stroke-width:1.5}
+.cb{display:grid;grid-template-columns:26px 1fr;gap:12px;text-align:left;padding:14px 4px;border-top:1px solid #1F2035;font-size:15px;line-height:21px;width:100%;color:#A9A6BC}
+.cb:first-child{border-top:0}
+.cb i{width:24px;height:24px;border-radius:7px;border:1.6px solid #6E6C85}
+
+/* red flag */
+.flag{background:#6E1A16;color:#FFEDE8}
+.flag .btn{background:#FFEDE8;color:#6E1A16;font-size:18px;min-height:60px}
+
+/* onboarding */
+.ob{background:#22243B;color:#F6F4F0}
+.ob .small{color:#C2C2D6}
+
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal .dow{text-align:center;font-size:12px;font-weight:600;color:var(--ink-2)}
+.cell{aspect-ratio:1/1.12;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;position:relative;background:var(--card);font-variant-numeric:tabular-nums;min-width:0}
+.cell .d{font-size:14px;font-weight:600}
+.cell .r{font-size:11px;font-weight:600;opacity:.85}
+.cell.rated{color:#22243B}
+.cell.today{box-shadow:inset 0 0 0 2px var(--ink)}
+.cell.future{background:transparent;color:var(--ink-3)}
+.cell.blank{background:transparent}
+.cell .ad{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:currentColor}
+.cell .md{position:absolute;bottom:5px;left:50%;width:14px;margin-left:-7px;height:3px;border-radius:2px;background:currentColor;opacity:.7}
+.bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end;height:220px}
+.bar{display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;min-width:0}
+.bar i{width:100%;max-width:46px;border-radius:999px;display:block}
+.bar span{font-size:14px;color:var(--ink-2)}
+.bar b{font-size:13px;font-weight:500;color:var(--ink-2)}
+
+/* insights */
+.stat b{display:block;font-weight:400;font-size:34px;letter-spacing:-.03em;line-height:1.05}
+.meter{height:12px;border-radius:999px;background:var(--card-2);position:relative;overflow:visible}
+.meter i{display:block;height:100%;border-radius:999px;background:var(--lav)}
+.meter i.warn{background:#E8A33C}
+.meter u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink-2);border-radius:1px}
+.pbar{height:12px;border-radius:999px;background:var(--card-2);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:999px}
+.badge{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;border:1.2px solid var(--ink-2);color:var(--ink-2);white-space:nowrap}
+.badge.test{border-color:var(--lav);color:var(--lav)}
+.badge.likely{background:var(--lav);border-color:var(--lav);color:#22243B}
+.badge.conf{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+.badge .bd{display:inline-flex;gap:2px}.badge .bd i{width:5px;height:5px;border-radius:50%;border:1.2px solid currentColor}.badge .bd i.f{background:currentColor}
+.lag{display:grid;grid-template-columns:1.5fr repeat(3,minmax(0,1fr));font-size:14px}
+.lag span{padding:9px 4px;border-top:1px solid var(--line);text-align:center}
+.lag span:nth-child(4n+1){text-align:left}
+textarea.paste{width:100%;min-height:140px;border-radius:20px;border:1px solid var(--line);background:var(--card);padding:14px;font:13px/1.45 ui-monospace,Menlo,monospace;resize:vertical}
+pre.json{background:var(--card);border-radius:18px;padding:14px;font:12px/1.5 ui-monospace,Menlo,monospace;overflow:auto;max-height:240px;margin:0;white-space:pre}
+.rec{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid rgba(34,36,59,.12)}
+.rec:first-of-type{border-top:0}
+.rec .ri{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--card);color:var(--ink)}
+.rec b{font-weight:600}
+.timeline{display:flex;flex-direction:column}
+.tl{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:center;min-height:62px;position:relative}
+.tl::before{content:"";position:absolute;left:13px;top:0;bottom:0;border-left:1.5px dashed var(--ink-3)}
+.tl:first-child::before{top:50%}.tl:last-child::before{bottom:50%}
+.tl .nd{width:28px;height:28px;border-radius:50%;background:var(--card);display:grid;place-items:center;z-index:1}
+.tl .nd i{width:9px;height:9px;border-radius:50%}
+input.inp{min-height:50px;border-radius:999px;border:1px solid var(--line);background:var(--card);padding:0 18px;min-width:0;flex:1}
+</style>
+</head>
+<body>
+
+<div id="app" class="app" aria-live="polite"></div>
+<div id="layer"></div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const key = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse = k => { const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const NOW = () => new Date();
+const TODAY = () => key(NOW());
+const hm = d => pad(d.getHours())+':'+pad(d.getMinutes());
+const fmt12 = t => { if(!t) return '—'; const [h,m]=String(t).split(':').map(Number); return (h%12||12)+':'+pad(m)+' '+(h<12?'AM':'PM'); };
+const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fmtLong = k => { const d=parse(k); return DOW[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()]; };
+const fmtShort = k => { const d=parse(k); return DOW[d.getDay()].slice(0,3)+' '+d.getDate()+' '+MON[d.getMonth()].slice(0,3); };
+const ETH = ['መስከረም','ጥቅምት','ኅዳር','ታኅሣሥ','ጥር','የካቲት','መጋቢት','ሚያዝያ','ግንቦት','ሰኔ','ሐምሌ','ነሐሴ','ጳጉሜን'];
+function ethDate(d){
+  const y=d.getFullYear(), m=d.getMonth()+1, day=d.getDate();
+  const a=Math.floor((14-m)/12), y2=y+4800-a, m2=m+12*a-3;
+  const jdn=day+Math.floor((153*m2+2)/5)+365*y2+Math.floor(y2/4)-Math.floor(y2/100)+Math.floor(y2/400)-32045;
+  const r=((jdn-1723856)%1461+1461)%1461, n=(r%365)+365*Math.floor(r/1460);
+  const ey=4*Math.floor((jdn-1723856)/1461)+Math.floor(r/365)-Math.floor(r/1460);
+  return {y:ey, m:Math.floor(n/30)+1, d:(n%30)+1};
+}
+const ethStr = k => { const e=ethDate(parse(k)); return ETH[e.m-1]+' '+e.d; };
+const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
+const fromMin = m => { m=((m%1440)+1440)%1440; return pad(Math.floor(m/60))+':'+pad(m%60); };
+const sleepH = s => { if(!s||s.usual) return 8; let d=toMin(s.wake)-toMin(s.bed); if(d<0) d+=1440; return d/60; };
+const hhmm = mins => Math.floor(mins/60)+' h '+pad(Math.round(mins%60))+' m';
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+let rnd = 7; const rand = () => { rnd = (rnd*9301+49297)%233280; return rnd/233280; };
+
+const I = {
+  home:'<path d="M4 11l8-6.5 8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M9.5 15.5h5"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="4"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  ins:'<path d="M5 20v-7M10 20V5M15 20v-10M20 20v-5"/>',
+  plan:'<path d="M9 6h11M9 12h11M9 18h7"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  back:'<path d="M15 5l-7 7 7 7"/>', next:'<path d="M9 5l7 7-7 7"/>', arrow:'<path d="M4 12h16M14 6l6 6-6 6"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>', check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>', plus:'<path d="M12 5v14M5 12h14"/>', minus:'<path d="M5 12h14"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>', screen:'<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/>',
+  cloud:'<path d="M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.3 2A3 3 0 0 0 7 18z"/>', pin:'<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  pill:'<path d="M10.5 3.5a4.95 4.95 0 0 1 7 7l-7 7a4.95 4.95 0 0 1-7-7zM7 10l7 7"/>', drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  bowl:'<path d="M4 11h16a8 8 0 0 1-16 0zM9 7c0-1.5 1-2 1-3.5M13 7c0-1.5 1-2 1-3.5"/>', no:'<circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/>',
+  bed:'<path d="M3 18V8M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.6"/>', warn:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+  flask:'<path d="M9 3h6M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/>', copy:'<rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  bell:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>', walk:'<circle cx="13" cy="4.5" r="1.8"/><path d="M10 21l2-6-2.5-2 1-5 3 3 3 1M9.5 8L7 11"/>',
+  laptop:'<rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M3 19h18"/>', phone:'<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/>'
+};
+const ic = (n,c='') => '<svg class="ic '+c+'" viewBox="0 0 24 24" aria-hidden="true">'+I[n]+'</svg>';
+
+/* ---------- state ---------- */
+const STORE='mouch.v3';
+function load(){ try{ const s=localStorage.getItem(STORE); return s?JSON.parse(s):null; }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
+
+function seed(){
+  rnd = 7;
+  const t = NOW(), days = {}, attacks = [], doses = [];
+  const R = [6,7,5,7,6,null,8,7,3,5,6,9,null,7,2,4,6,7,null,8,10,6,5,3,6,7,null,9,6];
+  const tags = ['deadline','long drive','site visit','film shoot','fasting','coffee ceremony'];
+  R.forEach((r,i)=>{
+    const k = key(addDays(t, i-R.length));
+    const pain = r!=null && r<=4, great = r!=null && r>=9;
+    const d = { rating:r, headache: pain || (r===5 && rand()<.5), press: +(pain? -(4+rand()*4) : great? (rand()*1.2-.3) : (rand()*3-1.8)).toFixed(1) };
+    d.mac = Math.round(pain? 470+rand()*110 : great? 290+rand()*90 : 360+rand()*120);
+    d.lastActive = pain && rand()<.75 ? fromMin(22*60+40+Math.round(rand()*100)) : fromMin(19*60+Math.round(rand()*150));
+    if(pain || great){
+      const short = pain ? rand()<.78 : rand()<.15;
+      d.ci = {
+        sleep: short ? {usual:false, bed:fromMin(24*60+15+Math.round(rand()*4)*15), wake:'06:30'} : {usual:true},
+        stress: pain? 3+Math.round(rand()*2) : 1+Math.round(rand()),
+        stressY: pain? (rand()<.4? 5 : 3) : 2,
+        meal: pain ? (rand()<.65?'today':'no') : (rand()<.2?'yesterday':'no'),
+        caffeine: pain ? 3+Math.round(rand()*2) : 2,
+        lastCaf: pain ? 'late' : 'morning',
+        water: pain ? (rand()<.6?'no':'yes') : 'yes',
+        ex: great ? 'light' : 'none', exY: great? 'hard':'none',
+        screen: pain ? (rand()<.88?'yes':'no') : (rand()<.25?'yes':'no'),
+        phone: pain ? '3-5' : '1-3',
+        alcohol: rand()<.15?'yes':'no',
+        signs: pain ? (rand()<.7?['Neck tension']:[]).concat(rand()<.4?['Yawning']:[]) : [],
+        tags: pain ? (rand()<.6?['deadline']:[]).concat(rand()<.4?['film shoot']:[]) : (rand()<.3?['coffee ceremony']:[]),
+        meals: pain ? { breakfast: rand()<.5?{skip:true,time:'08:00',items:[]}:{skip:false,time:'10:45',items:['Firfir','Sugary tea']},
+                        lunch:{skip:false,time:'15:00',items: rand()<.5?['Pasta','Soda']:['Injera','Shiro wot','Soda']},
+                        dinner:{skip:false,time:'21:45',items:['Injera','Firfir']}, snacks:{items:['Cake or biscuits','Sugary tea']} }
+                    : { breakfast:{skip:false,time:'07:45',items:['Eggs (enkulal)','Bread (dabo)']}, lunch:{skip:false,time:'13:00',items:['Beyaynetu','Injera']},
+                        dinner:{skip:false,time:'19:30',items:['Tibs','Salad']}, snacks:{items:['Fruit','Peanuts or nuts']} },
+        note: ''
+      };
+    }
+    days[k]=d;
+    if(r!=null && r<=3){
+      const st = 13+Math.round(rand()*7);
+      const med = rand()<.55 ? 'Volt Fast' : 'Gofen';
+      doses.push({id:'d'+i, med, date:k, time:fromMin(st*60+20), qty:1, atk:'a'+i, relief: med==='Volt Fast' ? (rand()<.75?'full':'some') : (rand()<.5?'some':'none')});
+      if(r<=2) doses.push({id:'d'+i+'b', med:'Gofen', date:k, time:fromMin(st*60+270), qty:1, atk:'a'+i, relief:'some'});
+      attacks.push({ id:'a'+i, date:k, start:fromMin(st*60), end:fromMin(st*60+150+Math.round(rand()*180)), peak: r<=2?8:6+Math.round(rand()),
+        regions:['forehead', rand()<.5?'ltemple':'rtemple'], extra:rand()<.4?['Neck']:[], symptoms:['Nausea','Light hurts'].concat(rand()<.3?['Sound hurts']:[]),
+        did:['Dark room','Water'], lost: r<=2?'half':'bit', done:true });
+    }
+  });
+  // yesterday: risky check-in so the forecast has something to say
+  const yk = key(addDays(t,-1));
+  days[yk] = { rating:6, headache:false, press:-1.1, mac:582, lastActive:'23:40',
+    ci:{ sleep:{usual:false,bed:'00:45',wake:'06:30'}, stress:3, stressY:4, meal:'today', caffeine:3, lastCaf:'late', water:'no', ex:'none', exY:'none', screen:'yes', phone:'3-5', alcohol:'no', signs:['Neck tension'], tags:['deadline'], note:'Long edit day. Lunch got pushed late.',
+      meals:{breakfast:{skip:true,time:'08:00',items:[]}, lunch:{skip:false,time:'15:10',items:['Pasta','Soda']}, dinner:{skip:false,time:'21:50',items:['Injera','Firfir']}, snacks:{items:['Cake or biscuits','Sugary tea']}} } };
+  // a dose from today that needs a relief answer
+  const tk = key(t);
+  days[tk] = { rating:null, headache:false, press:-2.4, mac:430, lastActive:'' };
+  [[33,'Volt Fast','full'],[35,'Gofen','none'],[37,'Volt Fast','full'],[40,'Gofen','some'],[42,'Volt Fast','some'],[44,'Gofen','none'],[46,'Volt Fast','full']].forEach(x=>doses.push({id:'h'+x[0], med:x[1], date:key(addDays(t,-x[0])), time:'14:30', qty:1, atk:null, relief:x[2]}));
+  let alt=0; Object.keys(days).sort().forEach(k=>{ const r=days[k].rating; if((r===4||r===5||r===6) && (days[k].headache||r===4)){ const med=(alt++%2)?'Volt Fast':'Gofen'; days[k].headache=true; doses.push({id:'s'+k, med, date:k, time:'16:10', qty:1, atk:null, relief: med==='Volt Fast'?(alt%3?'full':'some'):(alt%3?'some':'none')}); } });
+  doses.push({id:'dy', med:'Gofen', date:yk, time:'15:30', qty:1, atk:null, relief:null});
+  const until = key(addDays(t,19));
+  return {
+    v:1, name:'Barkneh', onboarded:false, sample:true,
+    theme:'light', nightDark:false,
+    bands:{pain:4, great:9},
+    reminder:{on:true, time:'21:00'},
+    meds:[{id:'m1',name:'Gofen',note:'Ibuprofen 400 mg',cls:'simple',nsaid:true,active:true},{id:'m2',name:'Volt Fast',note:'Diclofenac potassium 50 mg',cls:'simple',nsaid:true,active:true}],
+    tags:[], customFoods:[],
+    days, attacks, live:null,
+    doses, dismissed:[],
+    weather:{loc:'Addis Ababa', lat:9.03, lon:38.74, alt:2350, threshold:6, lastWorkday:'Fri', tomorrow:-6.2, today:-2.4},
+    screen:{lateOn:true, lateAfter:'22:30', workdaysOnly:true, breakOn:true, breakAfter:90, heavyFrom:8, mac:{on:true, synced:'22:58'}, pc:{on:false}},
+    plan:{ month: MON[addDays(t,-28).getMonth()]+' review', received:key(addDays(t,-6)),
+      findings:[
+        {text:'Short sleep the night before shows up on most of your pain days.', level:'worth testing'},
+        {text:'Heavy screen days (8 h+) cluster before attacks.', level:'worth testing'},
+        {text:'A big drop in pressure (6 hPa+) came before 3 of your 7 pain days.', level:'hunch'}],
+      experiments:[{id:'e1',title:'Same wake time, every day',rule:'Up by 7:00 AM, weekends too.',from:key(addDays(t,-8)),to:until,done:Object.fromEntries([1,2,3,5,6,7,8].map(n=>[key(addDays(t,-n)),true]))}],
+      food:[{id:'f1',rule:'No refined carbs or sweets after 4 PM',detail:'White bread, pasta, cake, biscuits, soda, sugary tea.',until,why:'Testing whether evening sugar dips come before your attacks.'},
+            {id:'f2',rule:'Breakfast within an hour of waking',detail:'Eggs, firfir, oats, or bread with peanut butter.',until,why:'Skipped or late meals show up on 5 of your 8 pain days.'}],
+      nudges:[{id:'n1',message:'Pressure change tomorrow — carry your medication, protect sleep.',condition:'pressure_drop_tomorrow',on:true},
+              {id:'n2',message:'Short night. Keep caffeine to the morning and eat on time.',condition:'short_sleep',on:true},
+              {id:'n3',message:'Moon phase alert',condition:'full_moon',on:true}]
+    },
+    pastPlans:[{month:'August review', findings:2, experiments:1}],
+  };
+}
+
+let S = load() || seed();
+// keep "today" fresh if the stored seed is from an earlier day
+if(!S.days[TODAY()]) S.days[TODAY()] = {rating:null, headache:false, press:S.weather.today, mac:0, lastActive:''};
+
+const V = { view: S.onboarded?'today':'onboard', ob:0, dayKey:null, calMonth:null, insMonth:null, recentFilter:'all', ci:null, atk:null, flagFrom:null, sheet:null, followUp:false, importText:'', importResult:null, delTyped:'', newTag:'', newMed:'', newMedCls:'nsaid', expandUnusual:false, ciTag:'' };
+
+/* ---------- theme ---------- */
+function applyTheme(){
+  const h = NOW().getHours();
+  let t = S.theme;
+  if(t==='system' && S.nightDark && (h>=20 || h<6)) t='dark';
+  if(t==='system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+}
+
+/* ---------- domain ---------- */
+const band = r => r==null ? 'unrated' : r<=S.bands.pain ? 'pain' : r>=S.bands.great ? 'great' : 'normal';
+const day = k => S.days[k] || (S.days[k]={rating:null,headache:false,press:0,mac:0,lastActive:''});
+const isLate = t => !!t && (toMin(t)>=toMin(S.screen.lateAfter) || toMin(t)<300);
+
+const FACTORS = [
+  {id:'sleep', label:'Short sleep', w:14, test:(c)=>c&&c.sleep&&c.sleep.usual===false&&sleepH(c.sleep)<7},
+  {id:'meal', label:'Skipped or late meal', w:11, test:(c)=>c&&(c.meal==='today'||c.meal==='both')},
+  {id:'screen', label:'Heavy screen day', w:7, test:(c,d)=>(c&&c.screen==='yes')||(d&&d.mac>=S.screen.heavyFrom*60)},
+  {id:'late', label:'Worked late', w:7, test:(c,d)=>d&&isLate(d.lastActive)},
+  {id:'stress', label:'Stress dropped from yesterday', w:9, test:(c)=>c&&c.stressY!=null&&c.stress!=null&&c.stressY-c.stress>=2},
+  {id:'water', label:'Not enough water', w:6, test:(c)=>c&&c.water==='no'},
+  {id:'caf', label:'More caffeine than usual', w:5, test:(c)=>c&&c.caffeine!=null&&c.caffeine>=4},
+  {id:'cafnone', label:'No caffeine today', w:6, test:(c)=>c&&c.caffeine===0},
+  {id:'carbs', label:'Carb-heavy day', w:6, test:(c)=>{ const m=dayMacros(c); return m.n>0 && m.c>=2*m.p+2; }},
+  {id:'sugar', label:'Sugary food or drinks', w:6, test:(c)=>dayMacros(c).s>=3},
+  {id:'alcohol', label:'Alcohol yesterday', w:5, test:(c)=>c&&c.alcohol==='yes'},
+];
+const TAG_GROUPS = {
+  'Work':['deadline','client meeting','pitch or presentation','film shoot','site visit','long desk day','overtime','travel for work'],
+  'Places & weather':['long drive','flight','crowded or loud place','bright sun','hot weather','rain or storm','dusty day','strong smell or perfume','smoke'],
+  'Life & social':['fasting','coffee ceremony','holiday feast','wedding or event','late night out','argument or upset','big news','family visit'],
+  'Body':['period','hard workout','poor posture','neck or back strain','new medication','cold or flu','dehydrated']
+};
+const allTags = () => Object.values(TAG_GROUPS).flat().concat(S.tags||[]);
+const CUISINES = ['Ethiopian','American','Mexican','Italian','Asian','Middle Eastern','Snacks & drinks'];
+/* [name, cuisine, carbs 0-3, protein 0-3, sugar 0-2] — rough estimates per portion */
+const FOODS = [
+ ['Injera','Ethiopian',3,0,0],['Shiro wot','Ethiopian',1,2,0],['Misir wot','Ethiopian',1,2,0],['Doro wot','Ethiopian',0,3,0],['Tibs','Ethiopian',0,3,0],['Kitfo','Ethiopian',0,3,0],['Gomen','Ethiopian',1,0,0],['Atkilt wot','Ethiopian',1,0,0],['Beyaynetu','Ethiopian',2,2,0],['Firfir','Ethiopian',3,1,0],['Chechebsa','Ethiopian',3,1,0],['Genfo','Ethiopian',3,0,0],['Ful','Ethiopian',2,2,0],['Eggs (enkulal)','Ethiopian',0,2,0],['Dulet','Ethiopian',0,3,0],['Kocho','Ethiopian',3,0,0],['Bread (dabo)','Ethiopian',3,0,0],['Ambasha','Ethiopian',3,0,1],['Kolo','Ethiopian',2,1,0],
+ ['Burger','American',2,3,0],['Fries','American',3,0,0],['Fried chicken','American',1,3,0],['Sandwich','American',2,2,0],['Pancakes','American',3,1,1],['Eggs and bacon','American',0,3,0],['Cereal','American',3,0,1],['Steak','American',0,3,0],['Salad','American',1,0,0],['Hot dog','American',2,2,0],['Mac and cheese','American',3,1,0],['Donut','American',3,0,2],
+ ['Tacos','Mexican',2,2,0],['Burrito','Mexican',3,2,0],['Quesadilla','Mexican',2,2,0],['Rice and beans','Mexican',3,2,0],['Nachos','Mexican',3,1,0],['Enchiladas','Mexican',2,2,0],['Guacamole','Mexican',1,0,0],['Churros','Mexican',3,0,2],
+ ['Pizza','Italian',3,1,0],['Pasta','Italian',3,1,0],['Lasagna','Italian',2,2,0],['Risotto','Italian',3,1,0],['Panini','Italian',2,2,0],['Minestrone','Italian',2,1,0],['Tiramisu','Italian',2,1,2],['Gelato','Italian',2,1,2],
+ ['Fried rice','Asian',3,1,0],['Noodles','Asian',3,1,0],['Sushi','Asian',2,2,0],['Curry with rice','Asian',3,2,0],['Chicken stir-fry','Asian',1,3,0],['Dumplings','Asian',2,2,0],
+ ['Shawarma','Middle Eastern',2,3,0],['Falafel','Middle Eastern',2,2,0],['Hummus','Middle Eastern',1,2,0],['Kebab','Middle Eastern',0,3,0],['Rice pilaf','Middle Eastern',3,0,0],
+ ['Fruit','Snacks & drinks',2,0,0],['Peanuts or nuts','Snacks & drinks',1,2,0],['Yogurt','Snacks & drinks',1,2,0],['Milk','Snacks & drinks',1,2,0],['Cake or biscuits','Snacks & drinks',3,0,2],['Chocolate','Snacks & drinks',2,0,2],['Soda','Snacks & drinks',3,0,2],['Juice','Snacks & drinks',3,0,2],['Sugary tea','Snacks & drinks',2,0,2],['Popcorn','Snacks & drinks',2,0,0],['Chips or crisps','Snacks & drinks',3,0,0],['Energy drink','Snacks & drinks',2,0,2]
+];
+const foodInfo = n => { const f=FOODS.find(x=>x[0]===n); return f?{c:f[2],p:f[3],s:f[4]}:{c:1,p:1,s:0}; };
+const allItems = c => (c&&c.meals) ? ['breakfast','lunch','dinner','snacks'].flatMap(k=>c.meals[k]&&!c.meals[k].skip?c.meals[k].items:[]) : [];
+const macros = items => items.reduce((m,n)=>{ const f=foodInfo(n); m.c+=f.c; m.p+=f.p; m.s+=f.s; m.n++; return m; },{c:0,p:0,s:0,n:0});
+const dayMacros = c => macros(allItems(c));
+const macroLabel = m => !m.n ? '' : m.s>=3 ? 'Sugary' : m.c>=2*m.p+2 ? 'Carb-heavy' : m.p>=m.c ? 'Protein-rich' : 'Balanced';
+const MEAL_LATE = {breakfast:'10:30', lunch:'14:30', dinner:'21:30'};
+function mealSummary(c){
+  if(!c.meals) return {no:'On time',today:'Skipped or late today',yesterday:'Skipped yesterday',both:'Both days'}[c.meal]||'—';
+  const rows=['breakfast','lunch','dinner'].map(k=>{ const m=c.meals[k]; if(!m) return ''; return '<b style="font-weight:600">'+k[0].toUpperCase()+k.slice(1)+'</b> '+(m.skip?'skipped':fmt12(m.time)+(m.items.length?' · '+esc(m.items.join(', ')):'')); }).filter(Boolean);
+  if(c.meals.snacks&&c.meals.snacks.items.length) rows.push('<b style="font-weight:600">Snacks</b> '+esc(c.meals.snacks.items.join(', ')));
+  const m=dayMacros(c); if(m.n) rows.push('<span class="tag">'+macroLabel(m)+' · carbs '+m.c+' · protein '+m.p+'</span>');
+  return rows.join('<br>');
+}
+const SIGNS = ['Yawning','Neck tension','Food cravings','Light sensitivity','Sound sensitivity','Low mood','Fatigue'];
+
+function monthKeys(y,m){ const out=[]; const n=new Date(y,m+1,0).getDate(); for(let i=1;i<=n;i++) out.push(y+'-'+pad(m+1)+'-'+pad(i)); return out; }
+
+function factorStats(keys){
+  const ks = keys || Object.keys(S.days);
+  const pain = ks.filter(k=>S.days[k]&&S.days[k].ci&&band(S.days[k].rating)==='pain');
+  const great = ks.filter(k=>S.days[k]&&S.days[k].ci&&band(S.days[k].rating)==='great');
+  const totalAtk = S.attacks.filter(a=>a.done).length;
+  const row = (label, f) => {
+    const p = pain.filter(k=>f(S.days[k].ci,S.days[k],k)).length, g = great.filter(k=>f(S.days[k].ci,S.days[k],k)).length;
+    const pr = pain.length? p/pain.length:0, gr = great.length? g/great.length:0, diff = pr-gr;
+    let level = 'hunch';
+    if(pain.length>=5 && diff>=.4) level = totalAtk>=24 ? 'likely' : 'worth testing';
+    return {label, p, g, pn:pain.length, gn:great.length, diff, level};
+  };
+  return {
+    pain, great,
+    factors: FACTORS.map(F=>Object.assign(row(F.label, F.test),{id:F.id})).filter(r=>r.p+r.g>0).sort((a,b)=>b.diff-a.diff),
+    tags: allTags().map(t=>row(t, c=>c.tags&&c.tags.includes(t))).filter(r=>r.p+r.g>0).sort((a,b)=>b.diff-a.diff),
+    signs: SIGNS.map(s=>row(s, c=>c.signs&&c.signs.includes(s))).filter(r=>r.p+r.g>0).sort((a,b)=>b.diff-a.diff)
+  };
+}
+
+/* forecast: additive score from the latest check-in + tomorrow's pressure, weighted by your own pain-vs-great history */
+function forecast(){
+  const ks = Object.keys(S.days).filter(k=>S.days[k].ci).sort();
+  const today = TODAY();
+  const base = ks.length ? ks[ks.length-1] : today;
+  let d = S.days[base] || {}, c = d.ci;
+  const filled = o => Object.fromEntries(Object.entries(o||{}).filter(([k,v])=>v!=null&&!(Array.isArray(v)&&!v.length)));
+  if(ks.length>1 && Object.keys(filled(c)).length<8){ const prev=S.days[ks[ks.length-2]]; c=Object.assign({}, prev.ci, filled(c)); d=Object.assign({}, prev, d, {mac:d.mac||prev.mac, lastActive:d.lastActive||prev.lastActive}); }
+  const target = base===today ? 'tomorrow' : (base===key(addDays(NOW(),-1)) ? 'today' : 'next day');
+  const fs = factorStats();
+  const personal = id => { const r = fs.factors.find(f=>f.id===id); return r ? clamp(r.diff,0,.8) : 0; };
+  const hits = [];
+  let score = 8;
+  FACTORS.forEach(F=>{ if(F.test(c,d)){ const pts = Math.round(F.w*(1+personal(F.id)*.5)); score+=pts; const r=fs.factors.find(f=>f.id===F.id); hits.push({id:F.id,label:F.label,pts,why:r?r.p+' of '+r.pn+' pain days':''}); } });
+  const signs = (c&&c.signs)||[];
+  if(signs.length){ const pts=Math.min(14,signs.length*6); score+=pts; hits.push({id:'signs',label:'Early signs: '+signs.join(', ').toLowerCase(),pts,why:'Often a day before an attack'}); }
+  if(c&&c.tags&&c.tags.includes('fasting')){ score+=6; hits.push({id:'fast',label:'Fasting',pts:6,why:''}); }
+  const pr = target==='tomorrow' ? S.weather.tomorrow : S.weather.today;
+  if(Math.abs(pr)>=S.weather.threshold){ score+=12; hits.push({id:'press',label:'Pressure '+(pr>0?'+':'')+pr+' hPa '+target,pts:12,why:'3 of 7 pain days followed a 6 hPa change'}); }
+  else if(Math.abs(pr)>=S.weather.threshold/2){ score+=6; hits.push({id:'press',label:'Pressure '+(pr>0?'+':'')+pr+' hPa '+target,pts:6,why:''}); }
+  score = clamp(score, 4, 96);
+  hits.sort((a,b)=>b.pts-a.pts);
+  const level = score>=75?'High':score>=55?'Elevated':score>=30?'Moderate':'Low';
+  return {score, level, hits, target, base, d, c};
+}
+
+function advice(fc){
+  const ids = new Set(fc.hits.map(h=>h.id)), out = [];
+  const add = (kind, icon, title, body) => out.push({kind, icon, title, body});
+  if(ids.has('meal')){ add('eat','bowl','Eat a proper meal before 8 PM','Protein with slow carbs: shiro or misir wot with injera, eggs, lentils or beans. Keep a handful of kolo or peanuts by the bed.');
+                       add('avoid','no','Skip sweets on an empty stomach','Cake, biscuits, soda and sugary tea spike and drop fast. Have them after a meal, if at all.'); }
+  if(ids.has('water')) add('drink','drop','2–3 more glasses of water before bed','At 2,350 m you lose water faster than you feel it. Add a banana or a pinch of salt if you sweated.');
+  if(ids.has('caf')) add('avoid','no','No more coffee or tea today','That includes the evening buna. Tomorrow, 2 cups before noon. Cut slowly, not to zero.');
+  if(ids.has('cafnone')) add('drink','drop','Have your usual morning coffee','Dropping caffeine suddenly can bring on a headache. Taper over a week if you want less.');
+  if(ids.has('carbs')) add('eat','bowl','Add protein to dinner','Eggs, tibs, doro wot, misir, kitfo, chicken or yogurt. Go easy on extra injera, bread, pasta or rice tonight.');
+  if(ids.has('sugar')) add('avoid','no','No more sweets or soda today','Sugar spikes, then drops. That dip can set off an attack.');
+  if(ids.has('alcohol')) add('avoid','no','No alcohol tonight','Give yourself a clear night after yesterday.');
+  if(ids.has('sleep')) add('do','bed','In bed by 11 PM, up at 7 AM','Same wake time as usual, even after a short night. Screens off at 10:30 PM.');
+  if(ids.has('late')) add('do','moon','Stop work by '+fmt12(S.screen.lateAfter),'Write tomorrow\'s first task down so it\'s off your mind.');
+  if(ids.has('screen')) add('do','screen','Screen breaks every 90 minutes','Lower the brightness after sunset and look far away for 20 seconds each break.');
+  if(ids.has('stress')) add('do','walk','Keep tomorrow\'s routine','A drop in stress can set off a let-down attack. Same wake time and meals, even if you rest.');
+  if(ids.has('press')) add('do','pill','Carry '+(bestMed()?bestMed().name:'your painkiller'),'Pressure is changing. Treat early if pain starts.');
+  if(ids.has('signs')) add('do','spark','Early signs noticed','Follow your treatment plan early if the pain starts.');
+  if(!out.length) add('do','check','Nothing is stacking up','Keep meals, water and sleep regular and enjoy the evening.');
+  return out;
+}
+
+const medOf = n => S.meds.find(x=>x.name===n) || {cls:'simple',nsaid:false};
+const medDays = (cls, keys) => new Set(S.doses.filter(d=>medOf(d.med).cls===cls&&(!keys||keys.includes(d.date))).map(d=>d.date)).size;
+const dosesOf = a => S.doses.filter(d=>d.atk===a.id);
+const doseAt = d => { const t=parse(d.date); const [h,m]=d.time.split(':').map(Number); t.setHours(h,m,0,0); return t; };
+const dueRelief = () => S.doses.filter(d=>d.relief==null && !S.dismissed.includes(d.id) && (Date.now()-doseAt(d))>=2*3600e3 && (Date.now()-doseAt(d))<48*3600e3);
+function reliefStats(){ const o={}; S.meds.forEach(m=>o[m.name]={n:0,rated:0,good:0,full:0}); S.doses.forEach(d=>{ const x=o[d.med]||(o[d.med]={n:0,rated:0,good:0,full:0}); x.n+=d.qty||1; if(d.relief){ x.rated++; if(d.relief!=='none') x.good++; if(d.relief==='full') x.full++; } }); return o; }
+function bestMed(){ const st=reliefStats(); const c=S.meds.filter(m=>m.active&&st[m.name]&&st[m.name].rated>=3).map(m=>Object.assign({name:m.name},st[m.name],{rate:st[m.name].good/st[m.name].rated, frate:st[m.name].full/st[m.name].rated})).sort((a,b)=>(b.rate+b.frate)-(a.rate+a.frate)); return c.length>=2 && (c[0].rate+c[0].frate)-(c[1].rate+c[1].frate)>=0.25 ? c[0] : null; }
+const logo = sz => '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 96 96" role="img" aria-label="Mouch!" style="flex:none;display:block"><defs><filter id="lg'+sz+'" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter></defs><rect width="96" height="96" rx="28" fill="#22243B"/><circle cx="62" cy="60" r="20" fill="#9B82F6" opacity=".6" filter="url(#lg'+sz+')"/><path d="M19 67V47a9 9 0 0 1 18 0v20M37 47a9 9 0 0 1 18 0v20" fill="none" stroke="#FF786E" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><g transform="rotate(10 76 50)"><path d="M76 28v22" stroke="#F6F4F0" stroke-width="11" stroke-linecap="round"/><circle cx="76" cy="66" r="6" fill="#F6F4F0"/></g></svg>';
+const LIMIT = {triptan:10, simple:15}, WARN = {triptan:8, simple:12};
+function monthNow(){ const t=NOW(); return monthKeys(t.getFullYear(), t.getMonth()); }
+const daysLeft = k => Math.max(0, Math.round((parse(k)-parse(TODAY()))/864e5));
+
+/* ---------- small renderers ---------- */
+const RC = r => 'var(--r'+r+')';
+function rateCtl(sel, act){
+  let h='<div class="rate'+(sel?' picked':'')+'" role="group" aria-label="Rate the day from 1, worst pain, to 10, feeling great">';
+  for(let i=1;i<=10;i++) h+='<button style="--rc:'+RC(i)+'" class="'+(sel===i?'on':'')+'" data-a="'+act+':'+i+'" aria-pressed="'+(sel===i)+'">'+i+'</button>';
+  return h+'</div><div class="ends"><span>1 · worst pain</span><span>feeling great · 10</span></div>';
+}
+const badge = l => { const n={'hunch':1,'worth testing':2,'likely':3,'confirmed':4}[l]||1; const cls={'hunch':'','worth testing':'test','likely':'likely','confirmed':'conf'}[l]||''; let d=''; for(let i=1;i<=4;i++) d+='<i class="'+(i<=n?'f':'')+'"></i>'; return '<span class="badge '+cls+'"><span class="bd">'+d+'</span>'+esc(l)+'</span>'; };
+const tog = (on, act, label) => '<button class="tog'+(on?' on':'')+'" data-a="'+act+'" role="switch" aria-checked="'+!!on+'" aria-label="'+esc(label)+'"></button>';
+const stepper = (val, act, label) => '<span class="step"><button data-a="'+act+':-1" aria-label="Less '+esc(label)+'">'+ic('minus','s')+'</button><output class="num">'+esc(val)+'</output><button data-a="'+act+':1" aria-label="More '+esc(label)+'">'+ic('plus','s')+'</button></span>';
+const seg = (opts, cur, act) => '<div class="seg">'+opts.map(o=>'<button class="'+(o[0]===cur?'on':'')+'" data-a="'+act+':'+o[0]+'">'+esc(o[1])+'</button>').join('')+'</div>';
+function ringSvg(size, frac, track, fill, sw){ const r=(size-sw)/2, c=2*Math.PI*r; return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true"><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+track+'" stroke-width="'+sw+'"/><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+fill+'" stroke-width="'+sw+'" stroke-linecap="round" stroke-dasharray="'+(c*frac).toFixed(1)+' '+c.toFixed(1)+'" transform="rotate(-90 '+size/2+' '+size/2+')"/></svg>'; }
+
+function dock(active){
+  const live = S.live && S.attacks.find(a=>a.id===S.live);
+  const tabs = [['today','home','Home'],['calendar','cal','Calendar'],['insights','ins','Insights'],['plan','plan','Plan']];
+  let h='<div class="dock"><div class="dock-in">';
+  if(live) h+='<button class="livebar" data-a="openLive"><span><b>Attack in progress</b> · since '+fmt12(live.start)+'</span><span class="btn sm" style="background:#F6F4F0;color:#22243B">Open '+ic('next','s')+'</span></button>';
+  h+='<div class="dock-row"><nav class="tabbar" aria-label="Main">';
+  tabs.forEach(t=>{ const on=t[0]===active; h+='<button class="tab'+(on?' on':'')+'" data-a="go:'+t[0]+'" aria-label="'+t[2]+'"'+(on?' aria-current="page"':'')+'>'+(on?'<span class="dot">'+ic(t[1],'s')+'</span>'+t[2]:ic(t[1]))+'</button>'; });
+  h+='</nav>';
+  h+= live ? '<button class="ouch live" data-a="openLive" aria-label="Open the attack in progress">'+ic('pill','s')+elapsed(live)+'</button>'
+           : '<button class="ouch" data-a="startAttack" aria-label="Attack started — log it now">Ouch!</button>';
+  return h+'</div></div></div>';
+}
+function elapsed(a){ const st=parse(a.date); const [h,m]=a.start.split(':').map(Number); st.setHours(h,m,0,0); let mins=Math.max(0,Math.floor((NOW()-st)/60000)); return Math.floor(mins/60)+'h '+pad(mins%60)+'m'; }
+
+/* ---------- views ---------- */
+function vToday(){
+  const tk = TODAY(), d = day(tk), fc = forecast(), adv = advice(fc), tmac = dayMacros(d.ci);
+  const yk = key(addDays(NOW(),-1)), yUn = S.days[yk] && S.days[yk].rating==null;
+  const tm = medDays('triptan', monthNow()), sm = medDays('simple', monthNow());
+  const warnCls = tm>=WARN.triptan ? ['triptan',tm] : sm>=WARN.simple ? ['simple',sm] : null;
+  const strip = [...Array(7)].map((_,i)=>{ const k=key(addDays(NOW(),i-6)); const r=S.days[k]&&S.days[k].rating; return {k,r,d:DOW[parse(k).getDay()][0]}; });
+  const tone = fc.level==='High'||fc.level==='Elevated' ? 'coral' : fc.level==='Moderate' ? 'lav' : 'mist';
+  const exp = S.plan.experiments[0];
+  let h = '';
+  h += '<header class="head"><div><h1 class="hello">Hi, '+esc(S.name||'there')+'</h1><p class="date">'+fmtLong(tk)+' · <span class="eth">'+ethStr(tk)+'</span></p></div><button class="roundbtn" data-a="go:prefs" aria-label="Settings">'+ic('gear')+'</button></header>';
+  if(warnCls) h+='<div class="tile" style="background:var(--warn-bg);flex-direction:row;gap:12px"><span style="color:var(--warn)">'+ic('warn')+'</span><p style="font-size:15px;line-height:22px"><b style="color:var(--warn)">You\'re at '+warnCls[1]+' days this month.</b> Using these on '+LIMIT[warnCls[0]]+'+ days a month for 3 months can cause medication-overuse headache — talk to a doctor about prevention.</p></div>';
+  dueRelief().forEach(ds=>{ h+='<div class="tile"><div class="t-head">Did '+esc(ds.med)+(ds.date===tk?'':' '+(ds.date===key(addDays(NOW(),-1))?'yesterday':'on '+DOW[parse(ds.date).getDay()]))+' at '+fmt12(ds.time)+' help?</div><div class="row2"><button class="btn sm" data-a="relief:'+ds.id+':none">No</button><button class="btn sm" data-a="relief:'+ds.id+':some">Some</button><button class="btn sm dark" data-a="relief:'+ds.id+':full">Fully</button></div></div>'; });
+  // forecast hero
+  h += '<button class="tile '+tone+'" data-a="go:forecast" style="text-align:left;min-height:210px;padding:18px" aria-label="Migraine risk '+fc.target+': '+fc.level+'. Open forecast">'
+     + '<div class="orb" style="width:'+(90+fc.score*1.1)+'px;height:'+(90+fc.score*1.1)+'px;right:-'+(10+fc.score*.25)+'px;bottom:-'+(20+fc.score*.35)+'px"></div>'
+     + '<div class="t-head" style="position:relative"><span>Migraine risk '+fc.target+'</span>'+ic('next','s')+'</div>'
+     + '<div style="position:relative;display:flex;flex-direction:column;gap:2px;margin-top:6px"><span class="t-huge">'+fc.level+'</span><span class="num" style="font-size:15px;font-weight:500">'+fc.score+' / 100 · '+(fc.hits.length)+' things stacking up</span></div>'
+     + '<div class="pills" style="position:relative;max-width:72%;margin-top:auto">'+fc.hits.slice(0,3).map(x=>'<span class="tag">'+esc(x.label.split(':')[0])+'</span>').join('')+'</div></button>';
+  // rating
+  h += '<section class="tile" style="gap:14px;padding:18px"><div class="sec-h"><h2 style="font-weight:400;font-size:26px;letter-spacing:-.02em">How was today?</h2>'+(d.rating?'<span class="tag">'+band(d.rating)+' day</span>':'')+'</div>'+rateCtl(d.rating,'rate');
+  if(d.rating && V.followUp) h+='<div style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:12px"><p><b>Saved.</b> Any headache today, even a mild one?</p><div class="row2"><button class="btn" data-a="headache:1">Yes</button><button class="btn" data-a="headache:0">No</button></div></div>';
+  else if(d.rating) h+='<div class="lrow" style="border-top:1px solid var(--line)"><span>Any headache today?</span>'+tog(d.headache,'toggleHeadache','Headache today')+'</div>';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center">'+(d.rating?'<button class="link" data-a="editDetail:'+tk+'">'+(d.ci?'Edit detail':'Add detail')+'</button>':'<span class="small">One tap saves it.</span>')+(yUn?'<button class="link" data-a="openDay:'+yk+'">Rate yesterday</button>':'')+'</div></section>';
+  if(d.rating && band(d.rating)==='pain' && !S.attacks.some(a=>a.date===tk)) h+='<div class="tile"><div class="t-head" style="font-size:20px;font-weight:400">A pain day. Log the attack?</div><div class="row2"><button class="btn dark" data-a="logAttackFor:'+tk+'">Log the attack</button><button class="btn">Not now</button></div></div>';
+  // eat & drink
+  const food = S.plan.food.filter(f=>daysLeft(f.until)>0);
+  h += '<section class="tile mist" style="padding:18px;gap:6px"><div class="t-head"><span>'+ic('bowl','s')+'</span><span class="tag">From your data</span></div>'
+     + '<h2 style="font-weight:500;font-size:22px;line-height:1.2;letter-spacing:-.02em;margin:4px 0 6px">'+(fc.hits.length?'Because of '+fc.hits.slice(0,2).map(x=>{ const l=x.label.split(':')[0]; return l[0].toLowerCase()+l.slice(1); }).join(' and ')+':':'Today looks steady.')+'</h2>'
+     + (tmac.n?'<p class="small" style="margin-bottom:4px">Today so far: <b style="color:var(--ink)">'+macroLabel(tmac)+'</b> · carbs '+tmac.c+' · protein '+tmac.p+(tmac.s?' · sugar '+tmac.s:'')+'</p>':'')
+     + adv.slice(0,3).map(a=>'<div class="rec"><span class="ri">'+ic(a.icon,'s')+'</span><div><b>'+esc(a.title)+'</b><p class="small" style="color:var(--ink-2)">'+esc(a.body)+'</p></div></div>').join('')
+     + (food.length?'<div class="rec"><span class="ri" style="background:var(--ink);color:var(--on-ink)">'+ic('no','s')+'</span><div><b>'+esc(food[0].rule)+'</b><p class="small">Until '+fmtShort(food[0].until)+' · '+daysLeft(food[0].until)+' days left in your plan</p></div></div>':'')
+     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><button class="link" data-a="go:forecast">All suggestions</button><button class="btn sm dark" data-a="logMeals">'+ic('bowl','s')+'Log meals</button></div></section>';
+  // bento
+  const yd = fc.d||{}, sh = yd.ci? sleepH(yd.ci.sleep) : null;
+  h += '<div class="bento">';
+  h += '<div class="tile lav"><div class="t-head">Sleep '+ic('next','s')+'</div><span class="t-big num">'+(sh?(Math.floor(sh)+'h '+pad(Math.round((sh%1)*60))+'m'):'—')+'</span><span class="small">'+(yd.ci&&yd.ci.sleep&&!yd.ci.sleep.usual?fmt12(yd.ci.sleep.bed)+' → '+fmt12(yd.ci.sleep.wake):'Your usual hours')+'</span></div>';
+  h += '<div class="tile ink"><div class="t-head">Screens '+ic('screen','s')+'</div><span class="t-big num">'+hhmm(yd.mac||0).replace(' m','m').replace(' h','h')+'</span><span class="small">Mac · last active '+fmt12(yd.lastActive)+'</span></div>';
+  h += '<div class="tile coral"><div class="t-head"><span style="display:flex;gap:6px;align-items:center">'+ic('pin','s')+esc(S.weather.loc)+'</span>'+ic('cloud','s')+'</div><span class="t-big num" style="font-size:38px;font-weight:500">'+(S.weather.tomorrow>0?'+':'')+S.weather.tomorrow+'</span><span class="small">hPa tomorrow · '+(S.weather.today>0?'+':'')+S.weather.today+' today</span></div>';
+  const todayQ = S.doses.filter(x=>x.date===tk).reduce((a,x)=>a+(x.qty||1),0);
+  const mbars = [...Array(15)].map((_,i)=>'<i style="display:block;width:4px;border-radius:2px;height:'+(i<sm?20:9)+'px;background:'+(i<sm?(i>=WARN.simple?'#E8A33C':'var(--coral)'):'var(--card-2)')+'"></i>').join('');
+  h += '<button class="tile" data-a="sheet:meds" style="text-align:left" aria-label="Painkillers: '+todayQ+' today. Open painkiller log"><div class="t-head">Painkillers '+ic('pill','s')+'</div><span class="t-big num">'+todayQ+' <span style="font-size:15px;font-weight:500;letter-spacing:0">today</span></span><span style="display:flex;gap:2px;align-items:flex-end">'+mbars+'</span><span class="tiny">'+sm+' of 15 days this month</span></button>';
+  h += '</div>';
+  if(exp && daysLeft(exp.to)>0){ const doneN=Object.values(exp.done).filter(x=>x===true).length, dt=exp.done[tk];
+    h+='<section class="tile" style="flex-direction:row;align-items:center;gap:14px"><div class="ring" style="width:64px;height:64px;flex:none">'+ringSvg(64, Math.min(1,doneN/21), 'var(--card-2)', 'var(--coral)', 7)+'<span class="num" style="font-size:15px">'+doneN+'/21</span></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px"><div><span class="label">Experiment</span><p style="font-size:18px;font-weight:500;line-height:1.2">'+esc(exp.title)+'</p><p class="small">'+esc(exp.rule)+' Until '+fmtShort(exp.to)+'.</p></div><div class="row2"><button class="btn sm '+(dt===true?'dark':'')+'" data-a="exp:1">'+(dt===true?ic('check','s'):'')+'Done</button><button class="btn sm '+(dt===false?'dark':'')+'" data-a="exp:0">Not today</button></div></div></section>'; }
+  // recent panel
+  const items = [];
+  Object.keys(S.days).sort().reverse().slice(0,10).forEach(k=>{ const x=S.days[k]; if(x.rating!=null) items.push({k, type:'day', t:'Rated '+x.rating+' · '+band(x.rating)+' day', s:fmtLong(k)+(x.ci?' · check-in done':''), r:x.rating}); });
+  S.attacks.slice().sort((a,b)=>a.date<b.date?1:-1).slice(0,4).forEach(a=>items.push({k:a.date, type:'attack', t:'Attack · peak '+(a.peak||'—'), s:fmtLong(a.date)+' · '+fmt12(a.start)+(a.end?' – '+fmt12(a.end):''), r:null}));
+  items.sort((a,b)=>a.k<b.k?1:-1);
+  const f = V.recentFilter; const list = items.filter(x=>f==='all'||(f==='attacks'&&x.type==='attack')||(f==='days'&&x.type==='day')).slice(0,4);
+  h += '<section class="panel"><div class="sec-h"><h2>Recent</h2><button class="link" data-a="go:calendar">See all</button></div><div class="pills">'+[['all','All'],['days','Ratings'],['attacks','Attacks']].map(p=>'<button class="pill'+(f===p[0]?' on':'')+'" data-a="recent:'+p[0]+'">'+p[1]+'</button>').join('')+'</div><div class="timeline">'
+     + list.map(x=>'<button class="tl" data-a="openDay:'+x.k+'" style="text-align:left"><span class="nd"><i style="background:'+(x.r?RC(x.r):'var(--coral)')+'"></i></span><span style="min-width:0"><span class="small" style="display:block">'+esc(x.s)+'</span><span style="font-size:18px;font-weight:500">'+esc(x.t)+'</span></span>'+ic('next','s')+'</button>').join('')
+     + '</div></section>';
+  h += '<p class="tiny" style="text-align:center;padding:8px 0">Mouch! is a diary, not medical advice.</p>';
+  return h + dock('today');
+}
+
+function vForecast(){
+  const fc = forecast(), adv = advice(fc), fs=factorStats();
+  const tone = fc.level==='High'||fc.level==='Elevated' ? 'coral' : fc.level==='Moderate' ? 'lav' : 'mist';
+  const groups = {eat:'Eat',drink:'Drink',avoid:'Avoid',do:'Do'};
+  let h = '<header class="head" style="align-items:center"><button class="roundbtn" data-a="go:today" aria-label="Back">'+ic('back')+'</button><span class="small">Based on '+(fc.base===TODAY()?'today':fmtShort(fc.base))+'\'s check-in</span><span style="width:52px"></span></header>';
+  h += '<h1 class="hello">Risk '+fc.target+'</h1>';
+  h += '<section class="tile '+tone+'" style="align-items:center;padding:26px 18px;gap:6px"><div class="ring" style="width:200px;height:200px">'+ringSvg(200, fc.score/100, tone==='coral'?'rgba(34,36,59,.18)':'var(--card-2)', tone==='coral'?'#22243B':'var(--coral)', 14)+'<span style="display:flex;flex-direction:column;align-items:center"><span class="t-huge num">'+fc.score+'</span><span style="font-weight:600">'+fc.level+'</span></span></div><p class="small" style="text-align:center;max-width:300px">A forecast from your own diary. Still a '+(S.attacks.length<24?'hunch':'pattern')+': '+S.attacks.length+' of ~24 attacks logged.</p></section>';
+  h += '<section class="tile" style="gap:4px"><div class="sec-h"><h2 style="font-weight:400;font-size:22px">What\'s stacking up</h2></div>';
+  if(!fc.hits.length) h+='<p class="small">Nothing from your usual triggers. Enjoy it.</p>';
+  fc.hits.forEach(x=>{ h+='<div class="lrow" style="flex-direction:column;align-items:stretch;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:500">'+esc(x.label)+'</span><span class="num small">+'+x.pts+'</span></div><div class="pbar"><i style="width:'+Math.min(100,x.pts*3)+'%;background:var(--lav)"></i></div>'+(x.why?'<span class="tiny">Your data: '+esc(x.why)+'</span>':'')+'</div>'; });
+  h += '</section>';
+  ['eat','drink','avoid','do'].forEach(g=>{ const xs=adv.filter(a=>a.kind===g); if(!xs.length) return;
+    h+='<section class="tile '+(g==='avoid'?'':'mist')+'" style="gap:0"><span class="label" style="margin-bottom:4px">'+groups[g]+'</span>'+xs.map(a=>'<div class="rec"><span class="ri">'+ic(a.icon,'s')+'</span><div><b>'+esc(a.title)+'</b><p class="small">'+esc(a.body)+'</p></div></div>').join('')+'</section>'; });
+  const food = S.plan.food.filter(f=>daysLeft(f.until)>0);
+  if(food.length){ h+='<section class="tile ink" style="gap:0"><div class="t-head" style="margin-bottom:6px"><span class="label">From your plan</span><span class="tag">experiment</span></div>'+food.map(f=>'<div class="rec" style="border-color:rgba(246,244,240,.14)"><span class="ri" style="background:var(--coral);color:#22243B">'+ic(f.id==='f1'?'no':'bowl','s')+'</span><div><b>'+esc(f.rule)+'</b><p class="small">'+esc(f.detail)+'</p><p class="small" style="margin-top:4px">Until '+fmtShort(f.until)+' · '+daysLeft(f.until)+' days left. '+esc(f.why)+'</p></div></div>').join('')+'</section>'; }
+  h += '<section class="tile" style="gap:8px"><span class="label">How this works</span><p class="small">Each factor from your latest check-in adds points. Factors that show up more on your pain days than your great days count for more. Pressure comes from the forecast for '+esc(S.weather.loc)+'. Mouch! is a diary, not medical advice, and never suggests a dose.</p></section>';
+  return h + dock('today');
+}
+
+function vCalendar(){
+  const t=NOW(); const cm = V.calMonth || [t.getFullYear(), t.getMonth()];
+  const ks = monthKeys(cm[0], cm[1]), first = new Date(cm[0], cm[1], 1), lead = (first.getDay()+6)%7;
+  const rated = ks.filter(k=>S.days[k]&&S.days[k].rating!=null).length;
+  const wk = [...Array(7)].map((_,i)=>{ const k=key(addDays(t,i-6)); return {k, r:S.days[k]&&S.days[k].rating, d:DOW[parse(k).getDay()].slice(0,3)}; });
+  let h = '<header class="head"><div><h1 class="hello">This week</h1><p class="date">'+fmtShort(wk[0].k)+' – '+fmtShort(wk[6].k)+'</p></div></header>';
+  h += '<section class="tile" style="padding:18px 14px"><div class="bars" role="img" aria-label="Ratings for the last 7 days">'+wk.map(w=>'<button class="bar" data-a="openDay:'+w.k+'" aria-label="'+w.d+' '+(w.r||'not rated')+'"><b class="num">'+(w.r||'–')+'</b><i style="height:'+(w.r? (18+w.r*14):14)+'px;background:'+(w.r?RC(w.r):'var(--card-2)')+'"></i><span>'+w.d+'</span></button>').join('')+'</div></section>';
+  h += '<section class="tile" style="gap:14px"><div class="sec-h"><div><h2 style="font-weight:400;font-size:26px;letter-spacing:-.02em">'+MON[cm[1]]+' '+cm[0]+'</h2><p class="small">'+rated+' days rated</p></div><div style="display:flex;gap:6px"><button class="roundbtn" style="background:var(--card-2)" data-a="calMove:-1" aria-label="Previous month">'+ic('back','s')+'</button><button class="roundbtn" style="background:var(--card-2)" data-a="calMove:1" aria-label="Next month">'+ic('next','s')+'</button></div></div>';
+  h += '<div class="cal">'+['M','T','W','T','F','S','S'].map(x=>'<span class="dow">'+x+'</span>').join('');
+  for(let i=0;i<lead;i++) h+='<span class="cell blank"></span>';
+  const tk=TODAY();
+  ks.forEach(k=>{ const x=S.days[k], n=+k.slice(8); const fut = k>tk;
+    if(fut){ h+='<span class="cell future"><span class="d">'+n+'</span></span>'; return; }
+    const r = x&&x.rating, atk=S.attacks.some(a=>a.date===k), med=S.doses.some(d=>d.date===k);
+    h+='<button class="cell'+(r?' rated':'')+(k===tk?' today':'')+'" style="'+(r?'background:'+RC(r):'')+'" data-a="openDay:'+k+'" aria-label="'+fmtLong(k)+(r?', rated '+r:', not rated')+(atk?', attack':'')+'"><span class="d">'+n+'</span><span class="r">'+(r||'–')+'</span>'+(atk?'<span class="ad"></span>':'')+(med?'<span class="md"></span>':'')+'</button>'; });
+  h += '</div><div style="display:flex;gap:3px;margin-top:4px">'+[...Array(10)].map((_,i)=>'<span style="flex:1;height:8px;border-radius:4px;background:'+RC(i+1)+'"></span>').join('')+'</div><div class="ends"><span>1 pain</span><span>normal</span><span>great 10</span></div><div class="pills tiny" style="gap:14px"><span style="display:flex;gap:6px;align-items:center"><i style="width:7px;height:7px;border-radius:50%;background:var(--ink)"></i>attack</span><span style="display:flex;gap:6px;align-items:center"><i style="width:14px;height:3px;border-radius:2px;background:var(--ink)"></i>medication day</span><span style="display:flex;gap:6px;align-items:center"><i style="width:12px;height:12px;border-radius:4px;box-shadow:inset 0 0 0 1.5px var(--ink)"></i>today</span></div></section>';
+  return h + dock('calendar');
+}
+
+function vDay(){
+  const k=V.dayKey, d=day(k), c=d.ci, atks=S.attacks.filter(a=>a.date===k);
+  let h='<header class="head" style="align-items:center"><button class="roundbtn" data-a="go:calendar" aria-label="Back to calendar">'+ic('back')+'</button><span style="font-weight:600">'+fmtLong(k)+'</span><span style="width:52px"></span></header>';
+  if(d.rating) h+='<div><span class="tag" style="background:'+RC(d.rating)+';color:#22243B">'+band(d.rating)+' day</span></div>';
+  h+='<section class="tile" style="gap:14px">'+rateCtl(d.rating,'rateDay')+'<div class="lrow" style="border-top:1px solid var(--line)"><span>Headache</span>'+tog(d.headache,'toggleDayHeadache','Headache')+'</div></section>';
+  h+='<section class="tile" style="gap:2px"><div class="sec-h"><span class="label">Detail</span><button class="link" data-a="editDetail:'+k+'">'+(c?'Edit':'Add')+'</button></div>';
+  if(c){ const kv=(a,b)=>'<div class="lrow" style="min-height:44px;align-items:flex-start"><span class="small" style="width:90px;flex:none">'+a+'</span><span style="text-align:right">'+b+'</span></div>';
+    h+=kv('Sleep', (!c.sleep||c.sleep.usual)?'Usual hours':fmt12(c.sleep.bed)+' – '+fmt12(c.sleep.wake))+kv('Stress', (c.stress??'—')+' (yesterday '+(c.stressY??'—')+')')+kv('Meals', mealSummary(c))+kv('Caffeine', (c.caffeine??'—')+' cups')+kv('Water', c.water==='no'?'Not really':'Enough')+kv('Screens', (c.screen==='yes'?'Heavy':'Normal')+(d.mac?' · Mac '+hhmm(d.mac):''))+kv('Signs', esc((c.signs||[]).join(', ')||'None'))+kv('Tags', esc((c.tags||[]).join(', ')||'—'))+(c.note?kv('Note','<i>'+esc(c.note)+'</i>'):''); }
+  else h+='<p class="small">No check-in for this day.</p>';
+  h+='</section><div class="pills">'+S.doses.filter(x=>x.date===k).map(x=>'<span class="pill" style="border-color:var(--line)">'+ic('pill','s')+esc(x.med)+' · '+fmt12(x.time)+'</span>').join('')+'<span class="pill" style="border-color:var(--line)">'+ic('cloud','s')+esc(S.weather.loc)+' · '+(d.press>0?'+':'')+(d.press||0)+' hPa vs day before</span></div>';
+  h+='<section class="tile" style="gap:10px"><span class="label">Attacks</span>'+(atks.length?atks.map(a=>'<button class="lrow" style="text-align:left;width:100%" data-a="openAttack:'+a.id+'"><span><b style="font-weight:600">'+fmt12(a.start)+' – '+(a.end?fmt12(a.end):'…')+'</b><span class="small" style="display:block">Peak '+(a.peak||'—')+(dosesOf(a)[0]?' · '+esc(dosesOf(a)[0].med)+', '+({none:'no relief',some:'some relief',full:'full relief'}[dosesOf(a)[0].relief]||'relief not set'):'')+'</span></span>'+ic('next','s')+'</button>').join(''):'<p class="small">None logged.</p>')+'<button class="btn block" data-a="logAttackFor:'+k+'">'+ic('plus','s')+'Add an attack on this day</button></section>';
+  if(V.confirmDel) h+='<div class="tile" style="gap:10px"><p>Delete the rating, check-in and attacks for this day?</p><div class="row2"><button class="btn" data-a="delDay:0">Keep</button><button class="btn danger" data-a="delDay:1">Delete</button></div></div>';
+  else h+='<button class="btn danger block" data-a="askDel">Delete this day\'s entry</button>';
+  return h + dock('calendar');
+}
+
+function vInsights(){
+  const t=NOW(); const im = V.insMonth || [t.getFullYear(), t.getMonth()];
+  const ks = monthKeys(im[0], im[1]).filter(k=>k<=TODAY());
+  const rated = ks.filter(k=>S.days[k]&&S.days[k].rating!=null);
+  const atks = S.attacks.filter(a=>ks.includes(a.date));
+  const hd = ks.filter(k=>S.days[k]&&S.days[k].headache).length;
+  const avg = rated.length? (rated.reduce((s,k)=>s+S.days[k].rating,0)/rated.length).toFixed(1):'—';
+  const lost = atks.reduce((s,a)=>s+({full:1,half:.5,bit:.25}[a.lost]||0),0);
+  const peak = atks.length? (atks.reduce((s,a)=>s+(a.peak||0),0)/atks.length).toFixed(1):'—';
+  const fs = factorStats(ks);
+  // 30 day chart
+  const W=320,H=150; const pts=[]; for(let i=29;i>=0;i--){ const k=key(addDays(t,-i)); pts.push(S.days[k]&&S.days[k].rating); }
+  const X=i=>10+i*(W-20)/29, Y=r=>H-12-(r-1)*(H-24)/9;
+  let dots='', line=[]; pts.forEach((r,i)=>{ if(r) dots+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(r).toFixed(1)+'" r="5" fill="'+RC(r)+'"/>'; const w=pts.slice(Math.max(0,i-6),i+1).filter(Boolean); if(i>=3&&w.length) line.push(X(i).toFixed(1)+','+Y(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1)); });
+  const all=pts.filter(Boolean), a30=all.reduce((a,b)=>a+b,0)/(all.length||1);
+  const tm=medDays('triptan',ks), sm=medDays('simple',ks), tm30=medDays('triptan',[...Array(30)].map((_,i)=>key(addDays(t,-i)))), sm30=medDays('simple',[...Array(30)].map((_,i)=>key(addDays(t,-i))));
+  const nAtk = S.attacks.filter(a=>a.done).length;
+  const pairRow = r => '<div style="display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-weight:500">'+esc(r.label)+'</span>'+badge(r.level)+'</div><div style="display:grid;grid-template-columns:44px 1fr 62px;gap:8px;align-items:center"><span class="tiny">Pain</span><div class="pbar"><i style="width:'+(r.pn?r.p/r.pn*100:0)+'%;background:var(--coral)"></i></div><span class="tiny num" style="text-align:right">'+r.p+' of '+r.pn+'</span></div><div style="display:grid;grid-template-columns:44px 1fr 62px;gap:8px;align-items:center"><span class="tiny">Great</span><div class="pbar"><i style="width:'+(r.gn?r.g/r.gn*100:0)+'%;background:var(--lav)"></i></div><span class="tiny num" style="text-align:right">'+r.g+' of '+r.gn+'</span></div></div>';
+  let h='<header class="head"><h1 class="hello">Insights</h1></header>';
+  h+='<div class="pills" style="justify-content:space-between;align-items:center"><button class="roundbtn" data-a="insMove:-1" aria-label="Previous month">'+ic('back','s')+'</button><span style="font-weight:600">'+MON[im[1]]+' '+im[0]+'</span><button class="roundbtn" data-a="insMove:1" aria-label="Next month">'+ic('next','s')+'</button></div>';
+  if(rated.length<3){ h+='<section class="tile lav" style="gap:10px;padding:20px"><h2 style="font-weight:500;font-size:24px">Patterns need a few weeks</h2><p class="small">Rate each evening and log attacks when they come. Comparisons start after 3 pain days and 3 great days.</p><div class="meter"><i style="width:'+(rated.length/7*100)+'%"></i></div><span class="tiny">'+rated.length+' of 7 ratings this month</span></section>'+dock('insights'); return h; }
+  h+='<div class="bento" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[[hd,'headache days','ink'],[atks.length,'attacks','coral'],[avg,'avg rating',''],[lost,'lost days',''],[peak,'avg peak',''],[ks.length-rated.length,'not rated','']].map(s=>'<div class="tile stat '+s[2]+'" style="padding:14px;gap:2px"><b class="num">'+s[0]+'</b><span class="tiny">'+s[1]+'</span></div>').join('')+'</div>';
+  h+='<section class="tile" style="gap:10px"><div class="t-head" style="font-size:20px;font-weight:400">Last 30 days</div><svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Daily ratings for the last 30 days"><line x1="0" x2="'+W+'" y1="'+Y(10)+'" y2="'+Y(10)+'" stroke="var(--line)"/><line x1="0" x2="'+W+'" y1="'+Y(5.5)+'" y2="'+Y(5.5)+'" stroke="var(--line)"/><line x1="0" x2="'+W+'" y1="'+Y(1)+'" y2="'+Y(1)+'" stroke="var(--line)"/><line x1="0" x2="'+W+'" y1="'+Y(a30).toFixed(1)+'" y2="'+Y(a30).toFixed(1)+'" stroke="var(--ink-2)" stroke-dasharray="4 4"/><polyline points="'+line.join(' ')+'" fill="none" stroke="var(--lav)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+dots+'</svg><div class="pills tiny" style="gap:14px"><span style="display:flex;gap:6px;align-items:center"><i style="width:9px;height:9px;border-radius:50%;background:var(--r7)"></i>day</span><span style="display:flex;gap:6px;align-items:center"><i style="width:16px;height:2.5px;background:var(--lav)"></i>7-day average</span><span style="display:flex;gap:6px;align-items:center"><i style="width:16px;border-top:1.5px dashed var(--ink-2)"></i>30-day avg '+a30.toFixed(1)+'</span></div></section>';
+  h+='<section class="tile ink" style="gap:10px"><div class="t-head">Medication days vs limits</div>'+[['Triptan-type',tm,tm30,10,8],['Painkillers (NSAID and simple)',sm,sm30,15,12]].filter(m=>m[0]!=='Triptan-type'||S.meds.some(x=>x.cls==='triptan')).map(m=>'<div style="display:flex;justify-content:space-between;gap:8px"><span>'+m[0]+'</span><span class="small num">'+m[1]+'/'+m[3]+' this month · '+m[2]+' in 30 days</span></div><div class="meter" style="background:rgba(246,244,240,.14)"><i class="'+(m[1]>=m[4]?'warn':'')+'" style="width:'+(m[1]/m[3]*100)+'%"></i><u style="left:'+(m[4]/m[3]*100)+'%;background:#C9C9DA"></u></div>').join('')+'<p class="tiny">The mark is the warn line. Bars turn amber there.</p></section>';
+  h+='<section class="tile lav" style="gap:10px"><div class="sec-h"><h2 style="font-weight:400;font-size:20px">Evidence so far</h2>'+badge(nAtk>=24?'likely':'hunch')+'</div><div class="meter" style="background:var(--card)"><i style="width:'+Math.min(100,nAtk/24*100)+'%"></i></div><p class="small">'+nAtk+' of ~24 attacks logged. Until then, patterns stay a hunch or worth testing.</p></section>';
+  h+='<section class="tile" style="gap:0"><h2 style="font-weight:400;font-size:20px">Pain days vs great days</h2><p class="small" style="margin:4px 0 8px">'+fs.pain.length+' pain days and '+fs.great.length+' great days with a check-in.</p><span class="label" style="padding:8px 0 2px">Factors</span>'+fs.factors.slice(0,5).map(pairRow).join('')+(fs.tags.length?'<span class="label" style="padding:14px 0 2px">Your tags</span>'+fs.tags.slice(0,2).map(pairRow).join(''):'')+(fs.signs.length?'<span class="label" style="padding:14px 0 2px">Early-warning signs</span>'+fs.signs.slice(0,2).map(pairRow).join(''):'')+'</section>';
+  const lagRow = (label, f) => { const cnt = off => fs.pain.filter(k=>{ const kk=key(addDays(parse(k),-off)); const x=S.days[kk]; return x&&f(x.ci,x); }).length; const v=[cnt(0),cnt(1),cnt(2)], mx=Math.max(...v); return '<span>'+label+'</span>'+v.map(n=>'<span class="num"'+(n===mx&&n>0?' style="font-weight:700"':'')+'>'+n+'/'+fs.pain.length+'</span>').join(''); };
+  h+='<section class="tile" style="gap:6px"><h2 style="font-weight:400;font-size:20px">Same day or day before?</h2><div class="lag"><span style="border:0"></span><span class="tiny" style="border:0">same day</span><span class="tiny" style="border:0">day before</span><span class="tiny" style="border:0">2 days</span>'+lagRow('Short sleep',FACTORS[0].test)+lagRow('Heavy screen',FACTORS[2].test)+lagRow('Worked late',FACTORS[3].test)+'</div></section>';
+  const pAvg = b => { const xs=ks.filter(k=>S.days[k]&&band(S.days[k].rating)===b); return xs.length? (xs.reduce((s,k)=>s+(S.days[k].press||0),0)/xs.length).toFixed(1):'—'; };
+  const bigP = fs.pain.filter(k=>Math.abs(S.days[k].press||0)>=S.weather.threshold).length;
+  h+='<section class="tile coral" style="gap:10px"><div class="t-head"><span style="display:flex;gap:6px;align-items:center">'+ic('pin','s')+esc(S.weather.loc)+'</span>'+ic('cloud','s')+'</div><div class="bento" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[['pain','pain'],['normal','normal'],['great','great']].map(b=>'<div><b class="num" style="font-size:30px;font-weight:500;letter-spacing:-.03em">'+pAvg(b[0])+'</b><span class="tiny" style="display:block">hPa · '+b[1]+'</span></div>').join('')+'</div><p class="small">'+bigP+' of '+fs.pain.length+' pain days followed a change of '+S.weather.threshold+' hPa or more.</p></section>';
+  { const cnt=list=>{ const o={}; list.forEach(k=>allItems(S.days[k].ci).forEach(n=>o[n]=(o[n]||0)+1)); return o; };
+    const pc=cnt(fs.pain), gc=cnt(fs.great), pn=Math.max(1,fs.pain.length), gn=Math.max(1,fs.great.length);
+    const top=Object.keys(pc).map(n=>({n,p:pc[n],g:gc[n]||0,d:pc[n]/pn-(gc[n]||0)/gn})).sort((a,b)=>b.d-a.d).slice(0,4);
+    const avg=list=>{ const ms=list.map(k=>dayMacros(S.days[k].ci)).filter(m=>m.n); return ms.length? {c:(ms.reduce((s,m)=>s+m.c,0)/ms.length).toFixed(0), p:(ms.reduce((s,m)=>s+m.p,0)/ms.length).toFixed(0)} : null; };
+    const ap=avg(fs.pain), ag=avg(fs.great);
+    if(top.length) h+='<section class="tile mist" style="gap:10px"><div class="sec-h"><h2 style="font-weight:400;font-size:20px">Food</h2>'+badge('hunch')+'</div>'
+      +(ap&&ag?'<div class="bento"><div class="tile" style="padding:12px;gap:2px"><span class="tiny">Pain days</span><b class="num" style="font-size:20px;font-weight:500">Carbs '+ap.c+' · Protein '+ap.p+'</b></div><div class="tile" style="padding:12px;gap:2px"><span class="tiny">Great days</span><b class="num" style="font-size:20px;font-weight:500">Carbs '+ag.c+' · Protein '+ag.p+'</b></div></div>':'')
+      +'<span class="label">Shows up more on pain days</span>'+top.map(t=>'<div class="lrow" style="min-height:48px"><span>'+esc(t.n)+'</span><span class="small num">'+t.p+' of '+fs.pain.length+' pain · '+t.g+' of '+fs.great.length+' great</span></div>').join('')
+      +'<p class="tiny">Carb and protein points are rough estimates per dish.</p></section>'; }
+  { const st=reliefStats(), inMonth=S.doses.filter(d=>ks.includes(d.date)), best=bestMed();
+    h+='<section class="tile" style="gap:10px"><div class="sec-h"><h2 style="font-weight:400;font-size:20px">Painkillers</h2><span class="small num">'+inMonth.reduce((a,d)=>a+(d.qty||1),0)+' doses · '+new Set(inMonth.map(d=>d.date)).size+' days</span></div>'
+     + Object.keys(st).filter(n=>st[n].n).map(n=>{ const x=st[n]; return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap"><span style="display:flex;gap:8px;align-items:center">'+esc(n)+(best&&best.name===n?'<span class="badge test">works best for you</span>':'')+'</span><span class="small num">relief in '+x.good+' of '+x.rated+' rated · '+x.full+' full</span></div><div class="meter"><i style="width:'+(x.rated?x.good/x.rated*100:0)+'%"></i></div>'; }).join('')
+     + '<p class="tiny">From your own "did it help?" answers, all months.</p></section>'; }
+  return h + dock('insights');
+}
+
+function vPlan(){
+  const p=S.plan, d=NOW().getDate();
+  let h='<header class="head"><div><h1 class="hello">Plan</h1><p class="date">'+esc(p.month)+' · from Claude, '+fmtShort(p.received)+'</p></div></header>';
+  h+='<section class="tile coral" style="padding:20px;gap:10px;min-height:170px"><div class="orb" style="width:150px;height:150px;right:-30px;bottom:-60px"></div><span class="label" style="position:relative">'+(d<=3?'Your month is ready':'Monthly review')+'</span><h2 style="position:relative;font-weight:500;font-size:26px;line-height:1.15;letter-spacing:-.02em;max-width:80%">'+(d<=3?'Your month is ready for Claude.':'Send your month to Claude, paste back a plan.')+'</h2><div class="row2" style="position:relative;max-width:340px"><button class="btn dark" data-a="sheet:export">'+ic('arrow','s')+'Export</button><button class="btn" style="background:#FDFBF8;color:#22243B" data-a="sheet:import">Import plan</button></div></section>';
+  h+='<section class="tile" style="gap:0"><h2 style="font-weight:400;font-size:22px;margin-bottom:6px">Findings</h2>'+p.findings.map(f=>'<div class="lrow" style="align-items:flex-start;flex-direction:column;gap:8px;padding:12px 0">'+badge(f.level)+'<span>'+esc(f.text)+'</span></div>').join('')+'</section>';
+  p.experiments.forEach(e=>{ const n=Object.values(e.done).filter(Boolean).length; const dt=e.done[TODAY()];
+    h+='<section class="tile lav" style="gap:10px"><div class="t-head"><span class="label">Experiment</span><span class="small">'+fmtShort(e.from)+' – '+fmtShort(e.to)+'</span></div><p style="font-size:22px;font-weight:500;letter-spacing:-.02em">'+esc(e.title)+'</p><p class="small">'+esc(e.rule)+' Done on '+n+' days.</p><div class="row2"><button class="btn sm '+(dt===true?'dark':'')+'" data-a="exp:1">Done today</button><button class="btn sm '+(dt===false?'dark':'')+'" data-a="exp:0">Not today</button></div></section>'; });
+  h+='<section class="tile mist" style="gap:0"><h2 style="font-weight:400;font-size:22px;margin-bottom:4px">Food &amp; drink rules</h2>'+p.food.map(f=>'<div class="rec"><span class="ri">'+ic(f.id==='f1'?'no':'bowl','s')+'</span><div><b>'+esc(f.rule)+'</b><p class="small">'+esc(f.detail)+'</p><p class="tiny" style="margin-top:3px">Until '+fmtShort(f.until)+' · '+daysLeft(f.until)+' days left · '+esc(f.why)+'</p></div></div>').join('')+'</section>';
+  const KNOWN=['pressure_drop_tomorrow','short_sleep','skipped_meal','late_work','heavy_screen','high_risk'];
+  h+='<section class="tile" style="gap:0"><h2 style="font-weight:400;font-size:22px;margin-bottom:4px">Nudge rules</h2>'+p.nudges.map(n=>{ const ok=KNOWN.includes(n.condition); return '<div class="lrow"><span><span style="display:block">'+esc(n.message)+'</span><span class="tiny">'+(ok?'When: '+esc(n.condition.replace(/_/g,' ')):'Unknown condition "'+esc(n.condition)+'" — ignored')+'</span></span>'+(ok?tog(n.on,'nudge:'+n.id,'Nudge on'):'<span class="badge">ignored</span>')+'</div>'; }).join('')+'</section>';
+  h+='<details class="tile"><summary style="min-height:44px;display:flex;align-items:center;font-weight:500;cursor:pointer">Past plans ('+S.pastPlans.length+')</summary>'+S.pastPlans.map(x=>'<div class="lrow"><span>'+esc(x.month)+'</span><span class="small">'+x.findings+' findings · '+x.experiments+' experiment</span></div>').join('')+'</details>';
+  return h + dock('plan');
+}
+
+function exportObj(){
+  const t=NOW(), ks=[...Array(31)].map((_,i)=>key(addDays(t,-30+i)));
+  return {app:'Mouch!', version:1, exported:new Date().toISOString(), owner:{location:S.weather.loc, altitude_m:S.weather.alt, bands:S.bands},
+    days:ks.filter(k=>S.days[k]).map(k=>Object.assign({date:k},S.days[k])), attacks:S.attacks.filter(a=>ks.includes(a.date)), meds:S.meds, doses:S.doses.filter(d=>ks.includes(d.date)), currentPlan:S.plan,
+    reply_format:{findings:[{text:'',level:'hunch|worth testing|likely|confirmed'}],experiments:[{title:'',rule:'',from:'YYYY-MM-DD',to:'YYYY-MM-DD'}],food:[{rule:'',detail:'',until:'YYYY-MM-DD',why:''}],nudges:[{message:'',condition:'pressure_drop_tomorrow|short_sleep|skipped_meal|late_work|heavy_screen|high_risk',on:true}]}};
+}
+function checkPlan(txt){
+  let o; const errs=[];
+  try{ o=JSON.parse(txt); }catch(e){ return {ok:false, errs:['This isn\'t valid JSON. Copy Claude\'s whole reply, from the first { to the last }.']}; }
+  if(!Array.isArray(o.findings)) errs.push('findings: missing or not a list');
+  else o.findings.forEach((f,i)=>{ if(!f.text) errs.push('findings['+i+'].text: empty'); if(!['hunch','worth testing','likely','confirmed'].includes(f.level)) errs.push('findings['+i+'].level: use hunch, worth testing, likely or confirmed'); });
+  (o.experiments||[]).forEach((e,i)=>{ if(!e.title) errs.push('experiments['+i+'].title: empty'); if(!/^\d{4}-\d\d-\d\d$/.test(e.to||'')) errs.push('experiments['+i+'].to: needs a date like 2026-11-30'); });
+  (o.food||[]).forEach((f,i)=>{ if(!f.rule) errs.push('food['+i+'].rule: empty'); if(!/^\d{4}-\d\d-\d\d$/.test(f.until||'')) errs.push('food['+i+'].until: needs a date like 2026-11-30'); });
+  return errs.length? {ok:false, errs} : {ok:true, plan:o};
+}
+
+function vPrefs(){
+  const sc=S.screen;
+  let h='<header class="head" style="align-items:center"><button class="roundbtn" data-a="go:today" aria-label="Back">'+ic('back')+'</button><span style="font-weight:600;font-size:18px">Settings</span><span style="width:52px"></span></header>';
+  h+='<section class="tile coral" style="flex-direction:row;gap:12px;align-items:center">'+logo(48)+'<p style="font-size:15px;line-height:21px"><b>Mouch! is a diary, not medical advice.</b> It never suggests a dose. Talk to a doctor about treatment.</p></section>';
+  const grp = (title, rows) => '<span class="label" style="padding:14px 4px 0">'+title+'</span><section class="tile" style="gap:0;padding:6px 16px">'+rows+'</section>';
+  h+=grp('Day bands', '<div class="lrow"><span>Pain day up to</span>'+stepper(S.bands.pain,'band:pain','pain band')+'</div><div class="lrow"><span>Great day from</span>'+stepper(S.bands.great,'band:great','great band')+'</div>');
+  h+=grp('Notifications', '<div class="lrow"><span>Evening reminder<span class="tiny" style="display:block">"How was today?"</span></span>'+tog(S.reminder.on,'remToggle','Evening reminder')+'</div><div class="lrow"><span>Time</span>'+stepper(fmt12(S.reminder.time),'remTime','reminder time')+'</div><div class="lrow"><span>Try one</span><span class="pills" style="justify-content:flex-end"><button class="pill" data-a="demo:late">Late work</button><button class="pill" data-a="demo:break">Screen break</button><button class="pill" data-a="demo:eve">Evening</button></span></div><p class="tiny" style="padding:4px 0 10px">On iPhone, notifications arrive only when Mouch! is opened from the Home Screen.</p>');
+  h+=grp('Screen &amp; late work', '<div class="lrow"><span>Tell me when I\'m still working</span>'+tog(sc.lateOn,'sc:lateOn','Late work notification')+'</div><div class="lrow"><span>After</span>'+stepper(fmt12(sc.lateAfter),'scLate','late-work time')+'</div><div class="lrow"><span>Workdays only<span class="tiny" style="display:block">Last workday: '+esc(S.weather.lastWorkday)+'</span></span>'+tog(sc.workdaysOnly,'sc:workdaysOnly','Workdays only')+'</div><div class="lrow"><span>Screen-break reminder</span>'+tog(sc.breakOn,'sc:breakOn','Screen break reminder')+'</div><div class="lrow"><span>After unbroken</span>'+stepper(Math.floor(sc.breakAfter/60)+' h '+pad(sc.breakAfter%60),'scBreak','break interval')+'</div><div class="lrow"><span>Heavy screen day from</span>'+stepper(sc.heavyFrom+' h','scHeavy','heavy day')+'</div>'
+    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('laptop')+'<span>Mac<span class="tiny" style="display:block">'+(sc.mac.on?'Connected · synced '+fmt12(sc.mac.synced):'Not connected')+'</span></span></span><button class="btn sm" data-a="'+(sc.mac.on?'disc:mac':'sheet:connect:mac')+'">'+(sc.mac.on?'Disconnect':'Connect')+'</button></div>'
+    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('screen')+'<span>Windows PC<span class="tiny" style="display:block">'+(sc.pc.on?'Connected':'Not connected')+'</span></span></span><button class="btn sm" data-a="'+(sc.pc.on?'disc:pc':'sheet:connect:pc')+'">'+(sc.pc.on?'Disconnect':'Connect')+'</button></div>'
+    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('phone')+'<span>This phone<span class="tiny" style="display:block">Asked in the check-in. iPhone doesn\'t let web apps read Screen Time.</span></span></span></div><p class="tiny" style="padding:4px 0 10px">Only daily totals, session lengths and the last active time leave your computer. No app names or window titles.</p>');
+  h+=grp('Medications', S.meds.map(m=>'<div class="lrow"><span>'+esc(m.name)+'<span class="tiny" style="display:block">'+(m.note?esc(m.note)+' · ':'')+(m.cls==='triptan'?'Triptan-type':m.nsaid?'NSAID':'Simple painkiller')+'</span></span><button class="pill'+(m.active?' on':'')+'" data-a="medToggle:'+m.id+'">'+(m.active?'Active':'Hidden')+'</button></div>').join('')+'<div class="lrow" style="flex-wrap:wrap"><input class="inp" id="newMed" placeholder="Medication name" value="'+esc(V.newMed)+'" data-in="newMed"><div class="seg" style="flex:1 1 100%">'+[['nsaid','NSAID'],['simple','Simple'],['triptan','Triptan']].map(o=>'<button class="'+(V.newMedCls===o[0]?'on':'')+'" data-a="medCls:'+o[0]+'">'+o[1]+'</button>').join('')+'</div><button class="btn sm dark" data-a="medAdd" style="flex:1 1 100%">Add medication</button></div>');
+  h+=grp('Tags', '<p class="tiny" style="padding-top:12px">'+allTags().length+' built-in tags are always in the check-in. Your own:</p><div class="pills" style="padding:10px 0">'+(S.tags.length?'':'<span class="small">None yet</span>')+S.tags.map((t,i)=>'<button class="chip" data-a="tagDel:'+i+'" aria-label="Remove tag '+esc(t)+'">'+esc(t)+ic('close','s')+'</button>').join('')+'</div><div class="lrow"><input class="inp" id="newTag" placeholder="New tag" value="'+esc(V.newTag)+'" data-in="newTag"><button class="btn sm dark" data-a="tagAdd">Add</button></div>');
+  h+=grp('Weather', '<div class="lrow"><span>Location</span><span>'+esc(S.weather.loc)+' · '+S.weather.lat+', '+S.weather.lon+'</span></div><div class="lrow"><span>Big pressure change</span>'+stepper(S.weather.threshold+' hPa','thresh','threshold')+'</div><div class="lrow"><span>Last workday</span>'+seg([['Thu','Thu'],['Fri','Fri'],['Sat','Sat']],S.weather.lastWorkday,'lastWd')+'</div>');
+  h+=grp('Theme', '<div style="padding:10px 0">'+seg([['dark','Dark'],['light','Light'],['system','System']],S.theme,'theme')+'</div><div class="lrow"><span>Dark from 8 PM to 6 AM<span class="tiny" style="display:block">When the theme is set to System</span></span>'+tog(S.nightDark,'nightDark','Dark at night')+'</div>');
+  h+=grp('Your data', '<div class="lrow"><span>Export everything (JSON)</span><button class="btn sm" data-a="sheet:export">Export</button></div>'+(S.sample?'<div class="lrow"><span>Sample month loaded<span class="tiny" style="display:block">The ratings and attacks you see are examples.</span></span><button class="btn sm" data-a="clearSample">Clear</button></div>':'')+'<div class="lrow"><span>Sync</span><span class="small">Off</span></div><div style="display:flex;flex-direction:column;gap:8px;padding:12px 0"><label for="delbox" class="small">Delete all data — type DELETE</label><div class="row2"><input class="inp" id="delbox" data-in="delTyped" value="'+esc(V.delTyped)+'" autocomplete="off"><button class="btn danger" data-a="wipe" '+(V.delTyped==='DELETE'?'':'disabled style="opacity:.4"')+'>Delete</button></div></div>');
+  h+='<p class="tiny" style="text-align:center;padding:14px 0"><span class="wordmark" style="font-size:16px;color:var(--ink)">Mouch<i>!</i></span> · v1.0 · no analytics, no ads · Mouch it out!</p>';
+  return h;
+}
+
+/* ---------- check-in ---------- */
+const Q = [
+  {id:'sleep', q:'How did you sleep last night?', type:'sleep'},
+  {id:'stress', q:'How stressful was today?', type:'s5', ends:['calm','very']},
+  {id:'stressY', q:'And yesterday?', hint:'A drop in stress from one day to the next can matter.', type:'s5', ends:['calm','very']},
+  {id:'breakfast', q:'Breakfast — what and when?', type:'meal', slot:'breakfast', def:'08:00'},
+  {id:'lunch', q:'Lunch — what and when?', type:'meal', slot:'lunch', def:'13:00'},
+  {id:'dinner', q:'Dinner — what and when?', type:'meal', slot:'dinner', def:'20:00'},
+  {id:'snacks', q:'Snacks and drinks?', hint:'Anything between meals. Coffee and tea come next.', type:'meal', slot:'snacks'},
+  {id:'caffeine', q:'Cups of coffee or tea with caffeine?', hint:'Your usual is about 2. A coffee ceremony is about 3.', type:'s6'},
+  {id:'lastCaf', q:'When was the last one?', type:'one', skipIf:a=>a.caffeine===0, opts:[['morning','Morning','before noon'],['early','Early afternoon','noon – 3 PM'],['late','Late afternoon','3 – 6 PM'],['evening','Evening','after 6 PM']]},
+  {id:'water', q:'Did you drink enough water?', type:'one', opts:[['yes','Yes, enough'],['no','Not really']]},
+  {id:'ex', q:'Any exercise today?', type:'one', opts:[['none','None'],['light','Light','a walk, stretching'],['hard','Hard','a workout, sport']]},
+  {id:'exY', q:'And yesterday?', type:'one', opts:[['none','None'],['light','Light','a walk, stretching'],['hard','Hard','a workout, sport']]},
+  {id:'screen', q:'A heavy screen or bright-light day?', type:'screen', opts:[['no','No'],['yes','Yes']]},
+  {id:'alcohol', q:'Any alcohol yesterday?', type:'one', opts:[['no','No'],['yes','Yes']]},
+  {id:'signs', q:'In the last two days, did you notice any of these?', hint:'Early-warning signs. Pick all that fit.', type:'multi', opts:SIGNS, none:'None of these'},
+  {id:'tags', q:'Anything going on?', hint:'Pick all that fit, or add your own.', type:'tags', none:'Nothing special'},
+  {id:'note', q:'Anything else worth remembering?', hint:'Optional.', type:'note'}
+];
+function ciAns(){ const d=day(V.ci.k); d.ci=d.ci||{signs:[],tags:[]}; return d.ci; }
+function vCheckin(){
+  const qi=V.ci.i, d=day(V.ci.k), a=ciAns();
+  const ctx = (band(d.rating)==='pain'?'Pain day':band(d.rating)==='great'?'Great day':'Day')+' · rated '+(d.rating||'—');
+  if(qi>=Q.length) return vCiEnd(ctx);
+  const q=Q[qi], total=Q.length;
+  let body='';
+  if(q.type==='one') body='<div class="ci-ans" style="flex-direction:column">'+q.opts.map(o=>'<button class="cpill wide'+(a[q.id]===o[0]?' on':'')+'" data-a="ans:'+q.id+':'+o[0]+'">'+esc(o[1])+(o[2]?'<small>'+esc(o[2])+'</small>':'')+'</button>').join('')+'</div>';
+  if(q.type==='s5'||q.type==='s6'){ const n=q.type==='s5'?5:6, base=q.type==='s5'?1:0; let b=''; for(let i=0;i<n;i++){ const v=base+i; b+='<button class="csq'+(n===6?' six':'')+(a[q.id]===v?' on':'')+'" data-a="ansN:'+q.id+':'+v+'">'+(n===6&&i===5?'5+':v)+'</button>'; } body='<div class="ci-ans" style="flex-wrap:nowrap;gap:10px">'+b+'</div>'+(q.ends?'<div class="ends" style="color:#C2C2D6;margin-top:10px"><span>1 · '+q.ends[0]+'</span><span>'+q.ends[1]+' · 5</span></div>':''); if(q.id==='stressY'&&a.stressY!=null) body+='<p class="small" style="text-align:center;margin-top:12px">From yesterday\'s check-in. Tap to change, or go on.</p>'; }
+  if(q.type==='sleep'){ const s=a.sleep||null, diff=s&&s.usual===false;
+    body='<div class="ci-ans" style="flex-direction:column"><button class="cpill wide'+(s&&s.usual?' on':'')+'" data-a="sleepUsual">My usual hours<small>11:00 PM → 7:00 AM</small></button><button class="cpill wide'+(diff?' on':'')+'" data-a="sleepDiff">Different times</button></div>';
+    if(diff) body+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:16px"><div class="lrow" style="border-color:#3A3C5A"><span>To bed</span>'+stepper(fmt12(s.bed),'sleepT:bed','bed time')+'</div><div class="lrow" style="border-color:#3A3C5A"><span>Woke up</span>'+stepper(fmt12(s.wake),'sleepT:wake','wake time')+'</div><p class="small" style="text-align:center">'+sleepH(s).toFixed(1).replace('.0','')+' h — '+(8-sleepH(s)>0?(8-sleepH(s)).toFixed(1).replace('.0','')+' h less than usual':'about usual')+'</p></div>'; }
+  if(q.type==='screen'){ const dd=day(V.ci.k);
+    body=(S.screen.mac.on&&dd.mac?'<p class="small" style="text-align:center;margin:-10px 0 18px">Your Mac logged <b style="color:#F6F4F0">'+hhmm(dd.mac)+'</b> today, last active '+fmt12(dd.lastActive)+'.</p>':'')+'<div class="ci-ans">'+q.opts.map(o=>'<button class="cpill'+(a.screen===o[0]?' on':'')+'" style="min-width:120px" data-a="ansStay:screen:'+o[0]+'">'+o[1]+(o[0]==='yes'&&!a.screen&&dd.mac>=S.screen.heavyFrom*60?'<small>suggested</small>':'')+'</button>').join('')+'</div><p class="small" style="text-align:center;margin:22px 0 10px">And your phone, roughly?</p>'+seg([['<1','< 1 h'],['1-3','1–3 h'],['3-5','3–5 h'],['5+','5 h +']],a.phone,'ansPhone'); }
+  if(q.type==='multi'||q.type==='tags'){ const cur=a[q.id]||[];
+    const chipB=o=>'<button class="cpill row'+(q.type==='tags'?' sm':'')+(cur.includes(o)?' on':'')+'" data-a="ansM:'+q.id+':'+encodeURIComponent(o)+'">'+(cur.includes(o)?ic('check','s'):'')+esc(o)+'</button>';
+    if(q.type==='multi') body='<div class="ci-ans">'+q.opts.map(chipB).join('')+'</div>';
+    else body=Object.keys(TAG_GROUPS).concat(S.tags.length?['Yours']:[]).map(g=>'<p class="ci-g">'+g+'</p><div class="ci-ans" style="justify-content:flex-start">'+(g==='Yours'?S.tags:TAG_GROUPS[g]).map(chipB).join('')+'</div>').join('');
+    if(q.type==='tags') body+='<div style="display:flex;gap:8px;margin-top:14px"><label for="ciTag" style="position:absolute;left:-9999px">New tag</label><input type="text" id="ciTag" placeholder="Add a tag" data-in="ciTag" value="'+esc(V.ciTag)+'"><button class="arrow" data-a="ciTagAdd">Add</button></div>'; }
+  if(q.type==='meal'){ a.meals=a.meals||{}; const m=a.meals[q.slot]||(a.meals[q.slot]={skip:false,time:q.def||null,items:[]}); const cuis=CUISINES.concat(S.customFoods.length?['Yours']:[]); const cur=cuis.includes(V.cuisine)?V.cuisine:'Ethiopian';
+    body='';
+    if(q.slot!=='snacks') body+='<div style="display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px">'+(m.skip?'':'<span class="small">Around</span>'+stepper(fmt12(m.time),'mealT:'+q.slot,'meal time'))+'<button class="cpill row sm'+(m.skip?' on':'')+'" data-a="mealSkip:'+q.slot+'">'+(m.skip?ic('check','s'):'')+'Skipped</button></div>';
+    if(!m.skip){
+      const list = cur==='Yours' ? S.customFoods : FOODS.filter(f=>f[1]===cur).map(f=>f[0]);
+      body+='<div class="cuis" role="group" aria-label="Cuisine">'+cuis.map(c=>'<button class="cuis-b'+(c===cur?' on':'')+'" data-a="cuisine:'+encodeURIComponent(c)+'" aria-pressed="'+(c===cur)+'">'+esc(c)+'</button>').join('')+'</div>';
+      body+='<div class="ci-ans" style="justify-content:flex-start;margin-top:14px">'+list.map(n=>{ const on=m.items.includes(n); return '<button class="cpill row sm'+(on?' on':'')+'" data-a="food:'+q.slot+':'+encodeURIComponent(n)+'">'+(on?ic('check','s'):'')+esc(n)+'</button>'; }).join('')+'</div>';
+      body+='<div style="display:flex;gap:8px;margin-top:12px"><label for="ciFood" style="position:absolute;left:-9999px">Something else</label><input type="text" id="ciFood" placeholder="Something else" data-in="ciFood" value="'+esc(V.ciFood||'')+'"><button class="arrow" data-a="foodAdd:'+q.slot+'">Add</button></div>';
+      const mm=macros(m.items), tot=Math.max(1,mm.c+mm.p);
+      body+='<div class="ci-sum">'+(m.items.length?'<span><b>'+m.items.length+' picked:</b> '+esc(m.items.join(', '))+'</span><div class="mbar"><i class="c" style="width:'+(mm.c/tot*100)+'%"></i><i class="p" style="width:'+(mm.p/tot*100)+'%"></i></div><span class="small">Carbs '+mm.c+' · Protein '+mm.p+(mm.s?' · Sugar '+mm.s:'')+' · '+macroLabel(mm)+'</span>':'<span class="small">Pick what you had, from any cuisine. Rough is fine.</span>')+'</div>';
+    }
+  }
+  if(q.type==='note') body='<label for="ciNote" style="position:absolute;left:-9999px">Note</label><textarea id="ciNote" maxlength="280" data-in="note" placeholder="A shoot ran over, skipped lunch…">'+esc(a.note||'')+'</textarea><p class="small num" style="text-align:right;margin-top:6px" id="noteCount">'+(a.note||'').length+' / 280</p>';
+  const needsNext = ['sleep','multi','tags','note','screen','meal'].includes(q.type) || (q.type==='s5' && q.id==='stressY' && a.stressY!=null);
+  const nextLabel = q.type==='note' ? 'Finish' : (q.type==='multi'||q.type==='tags') && !(a[q.id]||[]).length ? (q.none) : 'Next';
+  let h='<div class="full ci" role="dialog" aria-label="Check-in"><div class="full-in">';
+  h+='<div class="ci-top"><button class="ci-icon" data-a="ciBack" aria-label="Back">'+ic('back')+'</button><span class="ctx">'+esc(ctx)+'</span><button class="ci-later" data-a="ciLater">Finish later</button></div>';
+  h+='<div style="display:flex;flex-direction:column;align-items:center;gap:26px;padding:28px 0 26px"><div class="ring" style="width:118px;height:118px">'+ringSvg(118,(qi+1)/total,'#3A3C5A','#FF786E',8)+'<span style="font-size:32px" class="num">'+(qi+1)+'</span></div><div><h1 class="ci-q">'+esc(q.q)+'</h1>'+(q.hint?'<p class="ci-hint">'+esc(q.hint)+'</p>':'')+'</div></div>';
+  h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-start">'+body+'</div>';
+  h+='<div class="ci-foot" style="margin-top:24px"><div style="display:flex;flex-direction:column;gap:6px"><div class="dots" aria-hidden="true">'+[...Array(4)].map((_,i)=>'<i class="'+(Math.floor(qi/(total/4))===i?'on':'')+'"></i>').join('')+'</div><button class="ci-later" style="padding:0;color:#C2C2D6" data-a="ciSkip">Skip this question</button></div>'
+   + (needsNext ? '<button class="arrow'+(q.type==='note'||nextLabel!=='Next'?' fill':'')+'" data-a="ciNext">'+(nextLabel==='Next'?ic('arrow'):esc(nextLabel))+'</button>' : '<span class="small" style="display:flex;gap:6px;align-items:center">'+ic('check','s')+'Saved as you go</span>')+'</div>';
+  return h+'</div></div>';
+}
+function vCiEnd(ctx){
+  const d=day(V.ci.k), b=band(d.rating), hasAtk=S.attacks.some(a=>a.date===V.ci.k);
+  let h='<div class="full ci" role="dialog" aria-label="Check-in finished"><div class="full-in">';
+  if(b==='pain' && !hasAtk && !V.ci.askedAtk){
+    h+='<div class="ci-top"><span></span><span class="ctx">'+esc(ctx)+'</span><span></span></div><div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:30px"><h1 class="ci-q">Did you have a migraine attack today?</h1><div class="ci-ans" style="flex-direction:column"><button class="cpill wide" data-a="ciAtk:1">Yes, log it<small>Start and end time, pain, medication</small></button><button class="cpill wide" data-a="ciAtk:0">No, just a bad day</button></div></div>';
+  } else {
+    const fc=forecast();
+    h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;position:relative"><div class="orb" style="width:160px;height:160px;right:-20px;top:40px;opacity:.9"></div><span style="position:relative">'+logo(48)+'</span><h1 style="font-weight:400;font-size:52px;letter-spacing:-.04em;line-height:1;position:relative">All saved.</h1><p style="font-size:20px;line-height:1.4;color:#C2C2D6;max-width:340px;position:relative">'+(b==='great'?'Great days are the comparison the analysis needs most. Thank you.':'Thanks for logging a hard day. Rest now; the rest can wait.')+'</p><div class="tile" style="background:#3A3C5A;color:#F6F4F0;position:relative"><span class="tiny" style="color:#C2C2D6">Risk '+fc.target+'</span><span style="font-size:28px;font-weight:500">'+fc.level+' · '+fc.score+'</span><span class="tiny" style="color:#C2C2D6">'+esc(advice(fc)[0].title)+'</span></div></div><button class="btn block coral" data-a="ciDone">Done</button>';
+  }
+  return h+'</div></div>';
+}
+
+/* ---------- attack ---------- */
+const UNUSUAL = ['Sudden, explosive pain that reached full strength in under a minute','New weakness, numbness, confusion, trouble speaking, or loss of vision','Fever, stiff neck, or feeling very unwell with the headache','Pain that clearly changes when standing up or lying down','Pain that starts with coughing, straining, sneezing or exercise','This headache is very different from my usual ones, or they keep getting worse','This is a new type of headache and I\'m over 50'];
+const SYMS = ['Nausea','Vomiting','Light hurts','Sound hurts','Smell hurts','Aura: visual','Aura: numbness','Aura: speech'];
+function headMap(a){
+  const on=r=>a.regions.includes(r)?' on':'';
+  return '<svg class="hm" viewBox="0 0 200 240" width="200" height="240" role="group" aria-label="Where it hurts, mirror view">'
+   +'<path class="ol" d="M100 22c-40 0-68 32-68 78 0 26 8 50 22 66 12 14 28 22 46 22s34-8 46-22c14-16 22-40 22-66 0-46-28-78-68-78z"/><path class="ol" d="M32 104c-8 0-10 8-8 16 2 9 6 14 12 14M168 104c8 0 10 8 8 16-2 9-6 14-12 14M78 186l-4 40M122 186l4 40"/>'
+   +'<path class="rg'+on('top')+'" data-a="region:top" d="M44 66c14-28 34-38 56-38s42 10 56 38c-16-6-36-9-56-9s-40 3-56 9z"><title>Top</title></path>'
+   +'<path class="rg'+on('forehead')+'" data-a="region:forehead" d="M41 74c18-7 38-10 59-10s41 3 59 10c3 9 4 18 4 26-20-6-41-9-63-9s-43 3-63 9c0-8 1-17 4-26z"><title>Forehead</title></path>'
+   +'<path class="rg'+on('ltemple')+'" data-a="region:ltemple" d="M36 108c8-2 14-3 20-3l2 30c-7 1-13 3-18 6-3-10-4-22-4-33z"><title>Left temple</title></path>'
+   +'<path class="rg'+on('rtemple')+'" data-a="region:rtemple" d="M164 108c-8-2-14-3-20-3l-2 30c7 1 13 3 18 6 3-10 4-22 4-33z"><title>Right temple</title></path>'
+   +'<ellipse class="rg'+on('leye')+'" data-a="region:leye" cx="78" cy="122" rx="15" ry="9"><title>Left eye</title></ellipse><ellipse class="rg'+on('reye')+'" data-a="region:reye" cx="122" cy="122" rx="15" ry="9"><title>Right eye</title></ellipse>'
+   +'<path d="M100 132v20l-6 4M88 168c8 4 16 4 24 0" fill="none" stroke="#3A3B57" stroke-width="1.4" stroke-linecap="round"/></svg>';
+}
+function vAttack(){
+  const a=S.attacks.find(x=>x.id===V.atk); if(!a){ V.view='today'; return vToday(); }
+  const live=!a.done, chip=(on,act,label)=>'<button class="chip'+(on?' on':'')+'" data-a="'+act+'">'+(on?ic('check','s'):'')+esc(label)+'</button>';
+  let h='<div class="full atk" role="dialog" aria-label="Attack"><div class="full-in" style="gap:22px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center"><span class="label">'+(live?'Attack · in progress':'Attack · '+fmtShort(a.date))+'</span><button class="btn sm" data-a="atkClose">Close</button></div>';
+  if(live){
+    h+='<div><p class="small">Started '+fmt12(a.start)+'</p><p class="timer num" id="timer">'+elapsed(a)+'</p></div>';
+  } else {
+    h+='<div class="card" style="padding:4px 14px"><div class="lrow"><span>Started</span>'+stepper(fmt12(a.start),'atkT:start','start time')+'</div><div class="lrow"><span>Ended</span>'+stepper(fmt12(a.end||a.start),'atkT:end','end time')+'</div></div>';
+  }
+  h+='<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:8px"><span style="padding-left:10px">Pain peak'+(live?' so far':'')+'</span><span class="step" style="background:#1C1D33"><button data-a="peak:-1" aria-label="Lower">'+ic('minus','s')+'</button><output class="num" style="font-size:22px">'+(a.peak||0)+'</output><button data-a="peak:1" aria-label="Higher">'+ic('plus','s')+'</button></span></div>';
+  if(!live) h+='<div style="display:flex;flex-direction:column;gap:10px;align-items:center"><span class="label" style="align-self:flex-start">Where it hurts</span>'+headMap(a)+'<span class="tiny">Mirror view: your left is on the left. Tap the areas.</span><div class="pills" style="justify-content:center">'+['Back of head','Neck','Side varies'].map(x=>chip(a.extra.includes(x),'extra:'+encodeURIComponent(x),x)).join('')+'</div></div>';
+  h+='<div style="display:flex;flex-direction:column;gap:10px"><span class="label">Medication taken</span><div class="pills">'+dosesOf(a).map(ds=>'<button class="chip on" data-a="undoDose:'+ds.id+'" aria-label="Remove '+esc(ds.med)+' at '+fmt12(ds.time)+'">'+ic('check','s')+esc(ds.med)+' · '+fmt12(ds.time)+ic('close','s')+'</button>').join('')+S.meds.filter(m=>m.active).map(m=>'<button class="chip" data-a="dose:'+m.id+'">'+ic('plus','s')+esc(m.name)+'</button>').join('')+'</div><button class="link" style="color:#B3B0C4;align-self:flex-start" data-a="sheet:meds">Before you take one</button>';
+  if(!live) dosesOf(a).forEach((ds,i)=>{ h+='<div class="card" style="display:flex;flex-direction:column;gap:8px"><span class="small">'+esc(ds.med)+' at '+fmt12(ds.time)+' · relief at 2 hours</span>'+seg([['none','No relief'],['some','Some'],['full','Full']],ds.relief,'doseRelief:'+ds.id)+'</div>'; });
+  h+='</div><div style="display:flex;flex-direction:column;gap:10px"><span class="label">Symptoms</span><div class="pills">'+SYMS.map(s=>chip(a.symptoms.includes(s),'sym:'+encodeURIComponent(s),s)).join('')+'</div></div>';
+  if(!live){
+    h+='<div style="display:flex;flex-direction:column;gap:10px"><span class="label">What you did</span><div class="pills">'+['Dark room','Sleep','Cold pack','Food','Water','Other'].map(s=>chip(a.did.includes(s),'did:'+encodeURIComponent(s),s)).join('')+'</div></div>';
+    h+='<div style="display:flex;flex-direction:column;gap:10px"><span class="label">Lost time</span><div class="pills">'+[['pushed','Pushed through'],['bit','A bit'],['half','Half day'],['full','Full day']].map(o=>chip(a.lost===o[0],'lost:'+o[0],o[1])).join('')+'</div></div>';
+  }
+  h+='<div class="card" style="padding:6px 14px"><button class="lrow" style="width:100%;border:0" data-a="unusual" aria-expanded="'+V.expandUnusual+'"><span>Unusual symptoms?</span>'+ic(V.expandUnusual?'minus':'plus','s')+'</button>'+(V.expandUnusual?'<div>'+UNUSUAL.map((u,i)=>'<button class="cb" data-a="flag:'+i+'"><i></i><span>'+esc(u)+'</span></button>').join('')+'</div>':'')+'</div>';
+  if(!live) h+='<button class="btn block" style="color:#C98A84" data-a="atkDelete">Delete attack</button>';
+  h+='<div class="row2" style="position:sticky;bottom:0;padding:12px 0 6px;background:#0F1020">'+(live?'<button class="btn" data-a="atkClose">Close</button><button class="btn dark" data-a="atkOver">It\'s over</button>':'<button class="btn dark" data-a="atkDone">Done</button>')+'</div>';
+  return h+'</div></div>';
+}
+function vFlag(){
+  return '<div class="full flag" role="alertdialog" aria-labelledby="rft"><div class="full-in" style="gap:22px;justify-content:center"><svg class="ic" viewBox="0 0 24 24" style="width:48px;height:48px" aria-hidden="true">'+I.warn+'</svg><h1 id="rft" style="font-size:42px;line-height:1.05;font-weight:600;letter-spacing:-.03em">Get medical care now</h1><p style="font-size:19px;line-height:1.45">These symptoms need medical care now. Call emergency services or go to the nearest emergency department.</p><div style="background:rgba(255,237,232,.1);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:8px"><span style="font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase">You ticked:</span>'+V.flagged.map(i=>'<p style="font-size:17px;line-height:1.4">• '+esc(UNUSUAL[i])+'</p>').join('')+'</div><p style="font-size:19px;line-height:1.45;font-weight:600">If someone is with you, show them this screen. Do not drive yourself.</p><button class="btn block" data-a="flagOk">I understand</button></div></div>';
+}
+
+/* ---------- onboarding ---------- */
+function vOnboard(){
+  const steps=[
+    ['Every evening','Rate your day from 1 to 10. One tap, about three seconds.'],
+    ['Bad days and great days','A short check-in, one question per screen. Great days matter as much as bad ones.'],
+    ['When pain starts','Tap Ouch! The time is saved and the screen goes dim.'],
+    ['Once a month','Send your month to Claude, paste back a plan with findings, experiments and food rules.']];
+  const i=V.ob;
+  let h='<div class="full ob" role="dialog" aria-label="Welcome"><div class="full-in" style="justify-content:space-between;gap:20px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;align-items:center;gap:10px">'+logo(36)+'<span class="wordmark" style="font-size:24px">Mouch<i>!</i></span></span><button class="ci-later" data-a="obSkip">Skip</button></div>';
+  if(i===0){
+    h+='<div style="position:relative;display:flex;flex-direction:column;gap:18px;padding-top:30px"><div class="orb" style="width:220px;height:220px;left:50%;margin-left:-110px;top:-10px;opacity:.75"></div><div style="height:220px;display:grid;place-items:center;position:relative">'+logo(150)+'</div><h1 style="font-weight:400;font-size:46px;line-height:1.02;letter-spacing:-.04em;text-align:center;position:relative">Mouch it out!</h1><p class="small" style="text-align:center;font-size:17px;line-height:1.5;max-width:330px;margin:0 auto">A private migraine diary that learns your patterns, warns you before bad days, and tells you what to eat, drink and skip.</p></div>';
+    h+='<div style="display:flex;flex-direction:column;gap:8px"><label for="obName" class="small">What should we call you?</label><input type="text" id="obName" data-in="name" value="'+esc(S.name)+'" style="min-height:56px;border-radius:999px;border:0;background:#3A3C5A;color:#F6F4F0;padding:0 20px;font-size:17px"></div>';
+  } else {
+    const s=steps[i-1];
+    h+='<div style="display:flex;flex-direction:column;align-items:center;gap:26px;padding-top:30px"><div class="ring" style="width:150px;height:150px">'+ringSvg(150,i/4,'#3A3C5A','#FF786E',9)+'<span style="font-size:44px" class="num">'+i+'</span></div><h1 class="ci-q">'+s[0]+'</h1><p class="small" style="text-align:center;font-size:18px;line-height:1.5;max-width:320px">'+s[1]+'</p></div>';
+    if(i===4) h+='<div class="tile" style="background:#3A3C5A;color:#F6F4F0;gap:6px"><b>This app is a diary, not medical advice.</b><span class="small">It never suggests a dose. On iPhone, tap Share → Add to Home Screen so the 9 PM reminder can reach you.</span></div>';
+  }
+  h+='<div class="ci-foot"><div class="dots">'+[0,1,2,3,4].map(x=>'<i class="'+(x===i?'on':'')+'"></i>').join('')+'</div><button class="arrow'+(i===4?' fill':'')+'" data-a="obNext">'+(i===4?'Start':ic('arrow'))+'</button></div>';
+  return h+'</div></div>';
+}
+
+/* ---------- sheets & notifications ---------- */
+function vSheet(){
+  const s=V.sheet; if(!s) return '';
+  let h='<div class="scrim" data-a="sheetClose"><div class="sheet" role="dialog" aria-modal="true" data-stop="1"><span class="grab"></span>';
+  if(s.type==='export'){ const json=JSON.stringify(exportObj(),null,2);
+    h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Export for Claude</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div><p class="small">Copy this and paste it into a Claude chat with: "Find my migraine patterns and reply only with JSON in the reply_format." In the installed app this saves a .json file.</p><pre class="json" id="exportJson">'+esc(json.slice(0,4000))+(json.length>4000?'\n…':'')+'</pre><button class="btn dark block" data-a="copyExport">'+ic('copy','s')+'Copy all ('+Math.round(json.length/1024)+' KB)</button>'; }
+  if(s.type==='import'){ const r=V.importResult;
+    h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Import plan</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div><label for="importBox" class="small">Paste Claude\'s whole reply</label><textarea class="paste" id="importBox" data-in="importText" placeholder="{ &quot;findings&quot;: [ … ] }">'+esc(V.importText)+'</textarea>';
+    if(r&&!r.ok) h+='<div class="tile" style="background:var(--coral-tint);gap:6px"><b>Not saved.</b>'+r.errs.map(e=>'<span class="small">• '+esc(e)+'</span>').join('')+'</div>';
+    if(r&&r.ok) h+='<div class="tile mist" style="gap:6px"><b>Looks good</b><span class="small">'+r.plan.findings.length+' findings · '+(r.plan.experiments||[]).length+' experiments · '+(r.plan.food||[]).length+' food rules · '+(r.plan.nudges||[]).length+' nudges</span>'+r.plan.findings.slice(0,3).map(f=>'<span class="small">'+badge(f.level)+' '+esc(f.text)+'</span>').join('')+'</div><div class="row2"><button class="btn" data-a="sheetClose">Cancel</button><button class="btn dark" data-a="savePlan">Save plan</button></div>';
+    else h+='<div class="row2"><button class="btn" data-a="sampleReply">Paste a sample</button><button class="btn dark" data-a="checkPlan">Check</button></div>'; }
+  if(s.type==='meds'){ const tk=TODAY(), today=S.doses.filter(d=>d.date===tk).sort((a,b)=>a.time<b.time?-1:1), sm=medDays('simple',monthNow()), best=bestMed(), st=reliefStats(), fc=forecast();
+    const lastN=today.filter(d=>medOf(d.med).nsaid).slice(-1)[0];
+    const row=(tone,icon,title,body)=>'<div class="rec"><span class="ri" style="background:'+(tone==='ok'?'var(--mist-tint)':tone==='warn'?'var(--warn-bg)':'var(--coral-tint)')+'">'+ic(icon,'s')+'</span><div><b>'+title+'</b>'+(body?'<p class="small">'+body+'</p>':'')+'</div></div>';
+    h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Painkillers</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div>';
+    h+='<div class="tile" style="gap:4px"><span class="label">Today</span>'+(today.length?today.map(d=>'<div class="lrow" style="min-height:52px"><span>'+esc(d.med)+' · '+fmt12(d.time)+'</span><button class="btn sm" data-a="undoDose:'+d.id+'">Remove</button></div>').join(''):'<p class="small">None yet today.</p>')+'</div>';
+    h+='<div class="tile" style="gap:0"><span class="label" style="margin-bottom:4px">Before you take one</span>';
+    h+= sm>=15 ? row('stop','warn',sm+' painkiller days this month','Taking them on 15+ days a month for 3 months can cause medication-overuse headache. Talk to a doctor about prevention before taking more.')
+       : sm>=12 ? row('warn','warn',sm+' painkiller days this month','You\'re close to 15. Using them on 15+ days a month for 3 months can cause medication-overuse headache — talk to a doctor about prevention.')
+       : row('ok','check',sm+' of 15 painkiller days this month','Below the medication-overuse line.');
+    h+= lastN ? row('warn','pill','You took '+esc(lastN.med)+' at '+fmt12(lastN.time),'Gofen (ibuprofen) and Volt Fast (diclofenac) are both NSAIDs. Don\'t take one on top of the other. The leaflet says how long to wait before the next dose.')
+       : row('ok','check','No painkiller yet today','');
+    h+= best ? row('ok','spark',esc(best.name)+' works best for you','Relief in '+best.good+' of '+best.rated+' doses you rated, '+best.full+' of them full. '+S.meds.filter(m=>m.active&&m.name!==best.name).map(m=>esc(m.name)+': '+(st[m.name]?st[m.name].good:0)+' of '+(st[m.name]?st[m.name].rated:0)+'.').join(' '))
+       : row('warn','spark','Not sure yet which works better','Answer "did it help?" after each dose. Once each has 3 rated doses, Mouch! compares them.');
+    if(S.live || fc.level==='High' || fc.level==='Elevated') h+= row('warn','next', S.live?'Attack in progress':'Risk is '+fc.level.toLowerCase(),'Painkillers usually work better taken early, when the pain starts, than after waiting it out.');
+    h+='</div><div class="row2">'+S.meds.filter(m=>m.active).map(m=>'<button class="btn '+(best&&best.name===m.name?'coral':'dark')+'" data-a="logMed:'+m.id+'">'+ic('plus','s')+'Log '+esc(m.name)+'</button>').join('')+'</div><p class="tiny">Mouch! is a diary, not medical advice, and never suggests a dose. Follow the leaflet, your pharmacist or your doctor.</p>'; }
+  if(s.type==='connect'){ const code=s.code;
+    h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Connect a '+(s.dev==='mac'?'Mac':'Windows PC')+'</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div><p>1. On the computer, install Mouch! Helper from <b>[HELPER DOWNLOAD URL]</b>.</p><p>2. Open it from the '+(s.dev==='mac'?'menu bar':'system tray')+' and type this code:</p><div class="tile lav" style="align-items:center"><span class="num" style="font-size:44px;font-weight:500;letter-spacing:.12em">'+code+'</span><span class="tiny">Valid for 10 minutes</span></div><p class="small">The helper only reads when the screen was in use and when you were last active. It sends daily totals to this diary and nothing else.</p><button class="btn dark block" data-a="paired:'+s.dev+'">I\'ve entered the code</button>'; }
+  return h+'</div></div>';
+}
+let notifTimer=null;
+function notify(title, body, actions){
+  const L=$('#layer'); const n=document.createElement('div'); n.className='notif'; n.setAttribute('role','status');
+  n.innerHTML='<div class="nh"><span class="appi">'+logo(22)+'</span><b style="color:#F6F4F0">Mouch!</b><span style="margin-left:auto">now</span></div><p><b>'+esc(title)+'</b> '+esc(body)+'</p>'+(actions?'<div class="na">'+actions.map(a=>'<button data-a="notifX">'+esc(a)+'</button>').join('')+'</div>':'');
+  L.querySelectorAll('.notif').forEach(x=>x.remove()); L.appendChild(n); clearTimeout(notifTimer); notifTimer=setTimeout(()=>n.remove(), 7000);
+}
+function toast(t){ const L=$('#layer'); L.querySelectorAll('.toast').forEach(x=>x.remove()); const n=document.createElement('div'); n.className='toast'; n.innerHTML=ic('check','s')+esc(t); L.appendChild(n); setTimeout(()=>n.remove(),2200); }
+
+/* ---------- render ---------- */
+let lastVK='';
+function render(){
+  applyTheme();
+  const vk=V.view+'|'+(V.ci?V.ci.i:'')+'|'+(V.atk||'')+'|'+(V.dayKey||'');
+  const fEl=document.querySelector('.full'), sEl=document.querySelector('.sheet'), keepF=fEl?fEl.scrollTop:0, keepS=sEl?sEl.scrollTop:0, keepW=window.scrollY, same=vk===lastVK; lastVK=vk;
+  const app=$('#app'); let h='';
+  const v=V.view;
+  if(v==='onboard') h=vOnboard();
+  else if(v==='today') h=vToday();
+  else if(v==='forecast') h=vForecast();
+  else if(v==='calendar') h=vCalendar();
+  else if(v==='day') h=vDay();
+  else if(v==='insights') h=vInsights();
+  else if(v==='plan') h=vPlan();
+  else if(v==='prefs') h=vPrefs();
+  else if(v==='checkin') h=vCheckin();
+  else if(v==='attack') h=vAttack();
+  else if(v==='flag') h=vFlag();
+  app.innerHTML = h + vSheet();
+  document.body.style.overflow = ['checkin','attack','flag','onboard'].includes(v)||V.sheet ? 'hidden' : '';
+  if(same){ const f2=document.querySelector('.full'); if(f2) f2.scrollTop=keepF; const s2=document.querySelector('.sheet'); if(s2&&V.sheet) s2.scrollTop=keepS; window.scrollTo(0,keepW); }
+}
+function go(v){ V.view=v; V.confirmDel=false; render(); window.scrollTo(0,0); }
+
+/* ---------- actions ---------- */
+const STEP15 = (t,dir)=>fromMin(toMin(t)+dir*15);
+function openCheckin(k, start){ V.ci={k, i:start||0}; const a=ciAns(); if(a.stressY==null){ const yk=key(addDays(parse(k),-1)); const y=S.days[yk]; if(y&&y.ci&&y.ci.stress!=null) a.stressY=y.ci.stress; } V.view='checkin'; render(); }
+function deriveMeal(){
+  const a=ciAns(), M=a.meals||{}; let bad=false;
+  ['breakfast','lunch','dinner'].forEach(k=>{ const m=M[k]; if(!m) return; if(m.skip) bad=true; else if(m.items.length && m.time && toMin(m.time)>toMin(MEAL_LATE[k])) bad=true; });
+  const y=S.days[key(addDays(parse(V.ci.k),-1))], yb=!!(y&&y.ci&&(y.ci.meal==='today'||y.ci.meal==='both'));
+  a.meal = bad ? (yb?'both':'today') : (yb?'yesterday':'no');
+}
+function ciAdvance(){ V.ci.i++; const a=ciAns(); while(V.ci.i<Q.length && Q[V.ci.i].skipIf && Q[V.ci.i].skipIf(a)) V.ci.i++; save(); render(); }
+function newAttack(k, live){ const id='a'+Date.now(); const t=hm(NOW()); const a={id,date:k,start:live?t:'14:00',end:live?null:'17:00',peak:live?0:5,regions:[],extra:[],symptoms:[],doses:[],did:[],lost:null,done:!live}; S.attacks.push(a); if(live) S.live=id; day(k).headache=true; save(); return a; }
+
+const A = {
+  go:v=>go(v),
+  rate:n=>{ n=+n; const d=day(TODAY()); d.rating=n; save(); const b=band(n); if(b==='normal'){ V.followUp=true; render(); } else { V.followUp=false; openCheckin(TODAY()); } },
+  headache:v=>{ day(TODAY()).headache=v==='1'; V.followUp=false; save(); render(); toast('Saved'); },
+  toggleHeadache:()=>{ const d=day(TODAY()); d.headache=!d.headache; save(); render(); },
+  editDetail:k=>openCheckin(k),
+  relief:(id,v)=>{ const d=S.doses.find(x=>x.id===id); if(d) d.relief=v; save(); render(); toast('Saved'); },
+  logAttackFor:k=>{ const a=newAttack(k,false); V.atk=a.id; V.expandUnusual=false; go('attack'); },
+  exp:v=>{ const e=S.plan.experiments[0]; if(!e) return; const k=TODAY(); e.done[k] = e.done[k]===(v==='1')? undefined : v==='1'; save(); render(); },
+  recent:f=>{ V.recentFilter=f; render(); },
+  openDay:k=>{ V.dayKey=k; go('day'); },
+  rateDay:n=>{ day(V.dayKey).rating=+n; save(); render(); toast('Saved'); },
+  toggleDayHeadache:()=>{ const d=day(V.dayKey); d.headache=!d.headache; save(); render(); },
+  askDel:()=>{ V.confirmDel=true; render(); },
+  delDay:v=>{ if(v==='1'){ delete S.days[V.dayKey]; S.attacks=S.attacks.filter(a=>a.date!==V.dayKey); S.doses=S.doses.filter(d=>d.date!==V.dayKey); save(); V.confirmDel=false; go('calendar'); toast('Deleted'); } else { V.confirmDel=false; render(); } },
+  openAttack:id=>{ V.atk=id; V.expandUnusual=false; go('attack'); },
+  calMove:d=>{ const t=NOW(); let [y,m]=V.calMonth||[t.getFullYear(),t.getMonth()]; m+=+d; if(m<0){m=11;y--;} if(m>11){m=0;y++;} V.calMonth=[y,m]; render(); },
+  insMove:d=>{ const t=NOW(); let [y,m]=V.insMonth||[t.getFullYear(),t.getMonth()]; m+=+d; if(m<0){m=11;y--;} if(m>11){m=0;y++;} if(y*12+m>t.getFullYear()*12+t.getMonth()) return; V.insMonth=[y,m]; render(); },
+  /* check-in */
+  ans:(id,v)=>{ ciAns()[id]=v; save(); render(); setTimeout(ciAdvance, 200); },
+  ansN:(id,v)=>{ ciAns()[id]=+v; save(); render(); setTimeout(ciAdvance, 200); },
+  ansStay:(id,v)=>{ ciAns()[id]=v; save(); render(); },
+  ansPhone:v=>{ ciAns().phone=v; save(); render(); },
+  ansM:(id,v)=>{ v=decodeURIComponent(v); const a=ciAns(); a[id]=a[id]||[]; a[id]=a[id].includes(v)?a[id].filter(x=>x!==v):a[id].concat(v); save(); render(); },
+  sleepUsual:()=>{ ciAns().sleep={usual:true}; save(); render(); setTimeout(ciAdvance,200); },
+  sleepDiff:()=>{ const a=ciAns(); if(!a.sleep||a.sleep.usual) a.sleep={usual:false,bed:'23:00',wake:'07:00'}; save(); render(); },
+  sleepT:(f,dir)=>{ const s=ciAns().sleep; s[f]=STEP15(s[f],+dir); save(); render(); },
+  ciTagAdd:()=>{ const t=V.ciTag.trim().toLowerCase(); if(t&&!allTags().includes(t)) S.tags.push(t); if(t){ const a=ciAns(); a.tags=(a.tags||[]).concat(t); } V.ciTag=''; save(); render(); },
+  ciNext:()=>ciAdvance(),
+  mealT:(slot,dir)=>{ const m=ciAns().meals[slot]; m.time=STEP15(m.time,+dir); deriveMeal(); save(); render(); },
+  mealSkip:slot=>{ const m=ciAns().meals[slot]; m.skip=!m.skip; deriveMeal(); save(); render(); },
+  cuisine:c=>{ V.cuisine=decodeURIComponent(c); render(); },
+  food:(slot,f)=>{ f=decodeURIComponent(f); const m=ciAns().meals[slot]; m.items=m.items.includes(f)?m.items.filter(x=>x!==f):m.items.concat(f); deriveMeal(); save(); render(); },
+  foodAdd:slot=>{ const n=(V.ciFood||'').trim(); if(!n) return; if(!FOODS.some(f=>f[0]===n)&&!S.customFoods.includes(n)) S.customFoods.push(n); const m=ciAns().meals[slot]; if(!m.items.includes(n)) m.items.push(n); V.ciFood=''; deriveMeal(); save(); render(); },
+  logMeals:()=>openCheckin(TODAY(),3),
+  ciSkip:()=>ciAdvance(),
+  ciBack:()=>{ if(V.ci.i===0){ go('today'); return; } V.ci.i--; while(V.ci.i>0 && Q[V.ci.i].skipIf && Q[V.ci.i].skipIf(ciAns())) V.ci.i--; render(); },
+  ciLater:()=>{ save(); go('today'); toast('Saved. Finish any time.'); },
+  ciAtk:v=>{ V.ci.askedAtk=true; if(v==='1'){ const a=newAttack(V.ci.k,false); V.atk=a.id; go('attack'); } else render(); },
+  ciDone:()=>{ go('today'); },
+  /* attack */
+  startAttack:()=>{ const a=newAttack(TODAY(),true); V.atk=a.id; V.expandUnusual=false; go('attack'); },
+  openLive:()=>{ V.atk=S.live; go('attack'); },
+  atkClose:()=>{ go(V.dayKey&&V.view!=='today'?'day':'today'); },
+  atkOver:()=>{ const a=S.attacks.find(x=>x.id===V.atk); a.end=hm(NOW()); a.done=true; S.live=null; save(); render(); },
+  atkDone:()=>{ save(); go('today'); toast('Attack saved'); },
+  atkDelete:()=>{ S.doses.forEach(d=>{ if(d.atk===V.atk) d.atk=null; }); S.attacks=S.attacks.filter(x=>x.id!==V.atk); if(S.live===V.atk) S.live=null; save(); go('today'); toast('Attack deleted'); },
+  atkT:(f,dir)=>{ const a=S.attacks.find(x=>x.id===V.atk); a[f]=STEP15(a[f]||a.start,+dir); save(); render(); },
+  peak:dir=>{ const a=S.attacks.find(x=>x.id===V.atk); a.peak=clamp((a.peak||0)+ +dir,0,10); save(); render(); },
+  dose:id=>{ const a=S.attacks.find(x=>x.id===V.atk), m=S.meds.find(x=>x.id===id); S.doses.push({id:'d'+Date.now(),med:m.name,date:a.date,time:a.done?a.start:hm(NOW()),qty:1,atk:a.id,relief:null}); save(); render(); toast(m.name+' logged'); },
+  undoDose:id=>{ S.doses=S.doses.filter(x=>x.id!==id); save(); render(); toast('Removed'); },
+  logMed:id=>{ const m=S.meds.find(x=>x.id===id); const live=S.live&&S.attacks.find(x=>x.id===S.live); S.doses.push({id:'d'+Date.now(),med:m.name,date:TODAY(),time:hm(NOW()),qty:1,atk:live?live.id:null,relief:null}); save(); render(); toast(m.name+' logged'); },
+  doseRelief:(id,v)=>{ const d=S.doses.find(x=>x.id===id); if(d) d.relief=v; save(); render(); },
+  sym:s=>{ s=decodeURIComponent(s); const a=S.attacks.find(x=>x.id===V.atk); a.symptoms=a.symptoms.includes(s)?a.symptoms.filter(x=>x!==s):a.symptoms.concat(s); save(); render(); },
+  did:s=>{ s=decodeURIComponent(s); const a=S.attacks.find(x=>x.id===V.atk); a.did=a.did.includes(s)?a.did.filter(x=>x!==s):a.did.concat(s); save(); render(); },
+  extra:s=>{ s=decodeURIComponent(s); const a=S.attacks.find(x=>x.id===V.atk); a.extra=a.extra.includes(s)?a.extra.filter(x=>x!==s):a.extra.concat(s); save(); render(); },
+  lost:v=>{ const a=S.attacks.find(x=>x.id===V.atk); a.lost=a.lost===v?null:v; save(); render(); },
+  region:r=>{ const a=S.attacks.find(x=>x.id===V.atk); a.regions=a.regions.includes(r)?a.regions.filter(x=>x!==r):a.regions.concat(r); save(); render(); },
+  unusual:()=>{ V.expandUnusual=!V.expandUnusual; render(); },
+  flag:i=>{ V.flagged=[+i]; go('flag'); },
+  flagOk:()=>{ V.expandUnusual=false; go('attack'); },
+  /* plan */
+  sheet:(t,dev)=>{ V.sheet={type:t, dev, code: String(100000+Math.floor(Math.random()*899999)).replace(/(\d{3})(\d{3})/,'$1 $2')}; if(t==='import'){ V.importResult=null; } render(); },
+  sheetClose:()=>{ V.sheet=null; render(); },
+  copyExport:()=>{ const txt=JSON.stringify(exportObj(),null,2); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(()=>toast('Copied'),()=>selectPre()); } else selectPre(); },
+  sampleReply:()=>{ V.importText=JSON.stringify({findings:[{text:'Short sleep the night before appears on 6 of 8 pain days.',level:'worth testing'},{text:'Skipped lunch plus 4+ coffees came before 3 attacks.',level:'hunch'}],experiments:[{title:'Lunch by 1:30 PM',rule:'Eat lunch by 1:30 PM on workdays, even on shoot days.',from:TODAY(),to:key(addDays(NOW(),21))}],food:[{rule:'No refined carbs or sweets after 4 PM',detail:'White bread, pasta, cake, soda, sugary tea.',until:key(addDays(NOW(),21)),why:'Testing evening sugar dips.'}],nudges:[{message:'Short night. Keep caffeine to the morning.',condition:'short_sleep',on:true}]},null,2); V.importResult=null; render(); },
+  checkPlan:()=>{ V.importResult=checkPlan(V.importText); render(); },
+  savePlan:()=>{ const p=V.importResult.plan; S.pastPlans.unshift({month:S.plan.month, findings:S.plan.findings.length, experiments:S.plan.experiments.length});
+    S.plan={ month:MON[NOW().getMonth()]+' review', received:TODAY(), findings:p.findings, experiments:(p.experiments||[]).map((e,i)=>Object.assign({id:'e'+i,done:{},from:e.from||TODAY()},e)), food:(p.food||[]).map((f,i)=>Object.assign({id:'f'+(i+1),detail:'',why:''},f)), nudges:(p.nudges||[]).map((n,i)=>Object.assign({id:'n'+i},n)) };
+    V.sheet=null; V.importText=''; V.importResult=null; save(); render(); toast('Plan saved'); },
+  nudge:id=>{ const n=S.plan.nudges.find(x=>x.id===id); n.on=!n.on; save(); render(); },
+  /* settings */
+  band:(b,dir)=>{ if(b==='pain') S.bands.pain=clamp(S.bands.pain+ +dir,1,S.bands.great-1); else S.bands.great=clamp(S.bands.great+ +dir,S.bands.pain+1,10); save(); render(); },
+  remToggle:()=>{ S.reminder.on=!S.reminder.on; save(); render(); },
+  remTime:dir=>{ S.reminder.time=STEP15(S.reminder.time,+dir); save(); render(); },
+  sc:f=>{ S.screen[f]=!S.screen[f]; save(); render(); },
+  scLate:dir=>{ S.screen.lateAfter=STEP15(S.screen.lateAfter,+dir); save(); render(); },
+  scBreak:dir=>{ S.screen.breakAfter=clamp(S.screen.breakAfter+ +dir*15,30,240); save(); render(); },
+  scHeavy:dir=>{ S.screen.heavyFrom=clamp(S.screen.heavyFrom+ +dir,4,14); save(); render(); },
+  disc:dev=>{ S.screen[dev].on=false; save(); render(); },
+  paired:dev=>{ S.screen[dev].on=true; S.screen[dev].synced=hm(NOW()); V.sheet=null; save(); render(); toast('Connected'); },
+  demo:t=>{ if(t==='late') notify('Still working at '+fmt12(hm(NOW()))+'.','Late nights came before most of your pain days (a hunch so far). Time to wind down?',['Winding down','Ask in 30 min']); if(t==='break') notify('2 hours on the Mac without a break.','Look at something far away for 20 seconds and roll your shoulders.'); if(t==='eve') notify('How was today?','One tap is enough.'); },
+  notifX:()=>{ $('#layer').querySelectorAll('.notif').forEach(x=>x.remove()); },
+  medToggle:id=>{ const m=S.meds.find(x=>x.id===id); m.active=!m.active; save(); render(); },
+  medCls:c=>{ V.newMedCls=c; render(); },
+  medAdd:()=>{ const n=V.newMed.trim(); if(!n) return; S.meds.push({id:'m'+Date.now(),name:n,cls:V.newMedCls==='triptan'?'triptan':'simple',nsaid:V.newMedCls==='nsaid',active:true}); V.newMed=''; save(); render(); toast('Added'); },
+  tagDel:i=>{ S.tags.splice(+i,1); save(); render(); },
+  tagAdd:()=>{ const t=V.newTag.trim().toLowerCase(); if(t&&!allTags().includes(t)) S.tags.push(t); V.newTag=''; save(); render(); },
+  thresh:dir=>{ S.weather.threshold=clamp(S.weather.threshold+ +dir,2,12); save(); render(); },
+  lastWd:v=>{ S.weather.lastWorkday=v; save(); render(); },
+  theme:v=>{ S.theme=v; save(); render(); },
+  nightDark:()=>{ S.nightDark=!S.nightDark; save(); render(); },
+  clearSample:()=>{ const keep={name:S.name,theme:S.theme,nightDark:S.nightDark}; const f=seed(); S=Object.assign(f,keep,{onboarded:true,sample:false,days:{},attacks:[],doses:[],plan:Object.assign(f.plan,{findings:[],experiments:[],food:[],nudges:[]}),pastPlans:[]}); day(TODAY()); save(); render(); toast('Sample data cleared'); },
+  wipe:()=>{ if(V.delTyped!=='DELETE') return; try{ localStorage.removeItem(STORE); }catch(e){} S=seed(); V.delTyped=''; V.ob=0; go('onboard'); },
+  /* onboarding */
+  obNext:()=>{ if(V.ob<4){ V.ob++; render(); } else { S.onboarded=true; save(); go('today'); maybeLate(); } },
+  obSkip:()=>{ S.onboarded=true; save(); go('today'); maybeLate(); }
+};
+function selectPre(){ const p=$('#exportJson'); if(!p) return; const r=document.createRange(); r.selectNodeContents(p); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selected — copy it'); }
+
+document.addEventListener('click', e=>{
+  const el=e.target.closest('[data-a]'); if(!el) return;
+  if(el.classList.contains('scrim') && e.target!==el) return; // clicks inside sheet bubble to scrim only when on scrim itself
+  const parts=el.dataset.a.split(':'); const fn=A[parts[0]];
+  if(fn){ e.preventDefault(); fn(...parts.slice(1)); }
+});
+document.addEventListener('input', e=>{
+  const k=e.target.dataset && e.target.dataset.in; if(!k) return;
+  if(k==='note'){ ciAns().note=e.target.value.slice(0,280); save(); const c=$('#noteCount'); if(c) c.textContent=e.target.value.length+' / 280'; return; }
+  if(k==='ciFood'){ V.ciFood=e.target.value; return; }
+  if(k==='name'){ S.name=e.target.value.slice(0,30); save(); return; }
+  V[k]=e.target.value;
+  if(k==='delTyped'){ const b=document.querySelector('[data-a="wipe"]'); if(b){ const ok=V.delTyped==='DELETE'; b.disabled=!ok; b.style.opacity=ok?'1':'.4'; } }
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciTag'){ e.preventDefault(); A.ciTagAdd(); } if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciFood'){ e.preventDefault(); const b=document.querySelector('[data-a^="foodAdd:"]'); if(b) b.click(); } if(e.key==='Escape' && V.sheet){ A.sheetClose(); } });
+
+function maybeLate(){
+  const now=NOW(), wd=now.getDay(), lastWd={Thu:4,Fri:5,Sat:6}[S.screen.lastWorkday]||5;
+  const workday = wd>=1 && wd<=lastWd;
+  if(S.screen.lateOn && (!S.screen.workdaysOnly||workday) && isLate(hm(now)) && !S.live) setTimeout(()=>notify('Still working at '+fmt12(hm(now))+'.','Late nights came before most of your pain days (a hunch so far). Time to wind down?',['Winding down','Ask in 30 min']), 1600);
+}
+// timer: redraw once a minute, no seconds
+setInterval(()=>{ const t=$('#timer'); const a=S.live&&S.attacks.find(x=>x.id===S.live); if(t&&a) t.textContent=elapsed(a); else if(S.live && V.view!=='attack' && !['checkin','onboard','flag'].includes(V.view)) render(); }, 60000);
+
+render();
+if(S.onboarded) maybeLate();
+})();
+</script>
+
+<script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
+</body>
+</html>
