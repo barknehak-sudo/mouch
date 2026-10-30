@@ -193,6 +193,13 @@ h1,h2,h3,p{margin:0}
 .cuis::-webkit-scrollbar{display:none}
 .cuis-b{flex:none;min-height:44px;padding:0 16px;border-radius:999px;border:1.4px solid #5A5C80;color:#E6E6F0;font-weight:500;font-size:14.5px}
 .cuis-b.on{background:#F6F4F0;color:#22243B;border-color:#F6F4F0}
+.por{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid #3A3C5A}
+.por .seg button{min-height:36px;font-size:12.5px}
+.wk-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.plan-i{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--line);text-align:left;width:100%}
+.plan-i .ri{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--card-2);color:var(--ink)}
+.plan-i.done .ri{background:var(--ink);color:var(--on-ink)}
+.plan-i.done b{text-decoration:line-through;opacity:.6}
 .ci-sum{margin-top:16px;background:#2E3050;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:15px}
 .mbar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:#3A3C5A}
 .mbar i{display:block;height:100%}.mbar .c{background:var(--coral)}.mbar .p{background:var(--mist)}
@@ -578,14 +585,34 @@ const FOODS = [
 ];
 const foodInfo = n => { const f=FOODS.find(x=>x[0]===n); return f?{c:f[2],p:f[3],s:f[4]}:{c:1,p:1,s:0}; };
 const allItems = c => (c&&c.meals) ? ['breakfast','lunch','dinner','snacks'].flatMap(k=>c.meals[k]&&!c.meals[k].skip?c.meals[k].items:[]) : [];
-const macros = items => items.reduce((m,n)=>{ const f=foodInfo(n); m.c+=f.c; m.p+=f.p; m.s+=f.s; m.n++; return m; },{c:0,p:0,s:0,n:0});
-const dayMacros = c => macros(allItems(c));
+/* portions: each picked food can be small, for one, big or for two */
+const PORTIONS = [['small','Small',.5],['one','1 person',1],['big','Big',1.5],['two','2 people',2]];
+const porOf = (m,n) => (m&&m.por&&m.por[n]) || 'one';
+const porX = (m,n) => PORTIONS.find(p=>p[0]===porOf(m,n))[2];
+const r1 = v => Math.round(v*10)/10;
+const macros = (items, m) => { const r=items.reduce((a,n)=>{ const f=foodInfo(n), x=m?porX(m,n):1; a.c+=f.c*x; a.p+=f.p*x; a.s+=f.s*x; a.n++; return a; },{c:0,p:0,s:0,n:0}); r.c=r1(r.c); r.p=r1(r.p); r.s=r1(r.s); return r; };
+const dayMacros = c => { const r={c:0,p:0,s:0,n:0}; if(c&&c.meals) ['breakfast','lunch','dinner','snacks'].forEach(k=>{ const m=c.meals[k]; if(m&&!m.skip){ const x=macros(m.items,m); r.c+=x.c; r.p+=x.p; r.s+=x.s; r.n+=x.n; } }); r.c=r1(r.c); r.p=r1(r.p); r.s=r1(r.s); return r; };
+const itemsStr = m => m.items.map(n=>porOf(m,n)==='one'?n:n+' ('+PORTIONS.find(p=>p[0]===porOf(m,n))[1].toLowerCase()+')').join(', ');
+/* drinks: water in litres, plus ginger tea and electrolytes */
+const WATER_GOAL = 2;
+const DRINKS = [['ginger','Ginger tea',.25,'1 cup ≈ 0.25 L'],['electro','Electrolytes',.5,'1 bottle or sachet ≈ 0.5 L']];
+const fluidsL = c => c ? (c.waterL||0) + DRINKS.reduce((t,d)=>t+((c.drinks&&c.drinks[d[0]])||0)*d[2],0) : 0;
+const hasDrinks = c => !!c && (c.waterL!=null || !!c.drinks);
+const fmtL = v => String(Math.round(v*100)/100)+' L';
+function drinkStr(c){ if(!hasDrinks(c)) return ({yes:'Enough',no:'Not really'})[c&&c.water]||'—'; return [fmtL(c.waterL||0)+' water'].concat(DRINKS.filter(d=>c.drinks&&c.drinks[d[0]]).map(d=>c.drinks[d[0]]+' '+d[1].toLowerCase())).join(' · '); }
+function syncWater(c, k){ const f=fluidsL(c); c.waterMid = f>=1?'good':f>=.5?'some':'low'; c.water = f>=1.5 ? 'yes' : (k<TODAY() || toMin(hm(NOW()))>=toMin(S.sections.evening)) ? 'no' : null; }
+function addFluid(c, k, what, delta){
+  if(what==='water') c.waterL=clamp(Math.round(((c.waterL||0)+delta)*100)/100, 0, 8);
+  else { c.drinks=c.drinks||{}; c.drinks[what]=clamp((c.drinks[what]||0)+delta, 0, 12); }
+  syncWater(c, k);
+}
+const ciOf = k => { const d=day(k); return d.ci || (d.ci={signs:[],tags:[]}); };
 const macroLabel = m => !m.n ? '' : m.s>=3 ? 'Sugary' : m.c>=2*m.p+2 ? 'Carb-heavy' : m.p>=m.c ? 'Protein-rich' : 'Balanced';
 const MEAL_LATE = {breakfast:'10:30', lunch:'14:30', dinner:'21:30'};
 function mealSummary(c){
   if(!c.meals) return {no:'On time',today:'Skipped or late today',yesterday:'Skipped yesterday',both:'Both days'}[c.meal]||'—';
-  const rows=['breakfast','lunch','dinner'].map(k=>{ const m=c.meals[k]; if(!m) return ''; return '<b style="font-weight:600">'+k[0].toUpperCase()+k.slice(1)+'</b> '+(m.skip?'skipped':fmt12(m.time)+(m.items.length?' · '+esc(m.items.join(', ')):'')); }).filter(Boolean);
-  if(c.meals.snacks&&c.meals.snacks.items.length) rows.push('<b style="font-weight:600">Snacks</b> '+esc(c.meals.snacks.items.join(', ')));
+  const rows=['breakfast','lunch','dinner'].map(k=>{ const m=c.meals[k]; if(!m) return ''; return '<b style="font-weight:600">'+k[0].toUpperCase()+k.slice(1)+'</b> '+(m.skip?'skipped':fmt12(m.time)+(m.items.length?' · '+esc(itemsStr(m)):'')); }).filter(Boolean);
+  if(c.meals.snacks&&c.meals.snacks.items.length) rows.push('<b style="font-weight:600">Snacks</b> '+esc(itemsStr(c.meals.snacks)));
   const m=dayMacros(c); if(m.n) rows.push('<span class="tag">'+macroLabel(m)+' · carbs '+m.c+' · protein '+m.p+'</span>');
   return rows.join('<br>');
 }
@@ -713,6 +740,137 @@ function dock(active){
 }
 function elapsed(a){ const st=parse(a.date); const [h,m]=a.start.split(':').map(Number); st.setHours(h,m,0,0); let mins=Math.max(0,Math.floor((NOW()-st)/60000)); return Math.floor(mins/60)+'h '+pad(mins%60)+'m'; }
 
+/* ---------- week-by-week insights: what moves your own rating, the same day or the day after ---------- */
+const SIG = FACTORS.map(F=>[F.id, F.label, F.test]).concat([
+  ['latecaf','Coffee or tea after 3 PM', c=>c.lastCaf==='late'||c.lastCaf==='evening'],
+  ['ginger','Ginger tea', c=>!!(c.drinks&&c.drinks.ginger)],
+  ['electro','Electrolytes', c=>!!(c.drinks&&c.drinks.electro)],
+  ['ex','Exercise', c=>c.ex==='light'||c.ex==='hard'],
+  ['bigmeal','A meal for two', c=>!!c.meals&&Object.values(c.meals).some(m=>m&&!m.skip&&m.por&&Object.values(m.por).includes('two'))]
+]);
+/* a two-week experiment for each thing that can drag your days down */
+const EXP = {
+  sleep:['Same bedtime every night','In bed by 11 PM, up by 7 AM, weekends too.'],
+  meal:['Lunch by 1:30 PM','Breakfast by 9 AM and lunch by 1:30 PM, even on busy days.'],
+  water:['2 litres a day','Finish 1 L by noon and another by 6 PM.'],
+  caf:['No more than 3 cups','Three cups of coffee or tea at most, all before 2 PM.'],
+  latecaf:['No coffee after 2 PM','Last coffee or tea by 2 PM, ceremonies included.'],
+  screen:['Screen breaks','5 minutes away from screens every 90 minutes. Phone down by 10:30 PM.'],
+  late:['Stop work by 9 PM','Write tomorrow\'s first task down, then close the laptop.'],
+  sugar:['Sweets only after a meal','No soda, cake or sugary tea on an empty stomach.'],
+  carbs:['Protein at every meal','Eggs, shiro, misir, tibs, beans or yogurt with each meal.'],
+  alcohol:['Two weeks without alcohol','No alcohol for 14 days, then compare.'],
+  stress:['Same routine on easy days','Keep your wake time and meals on calm days and weekends.'],
+  steps:['A 20-minute walk a day','Any pace. After lunch works well.'],
+  bigmeal:['Smaller dinners','One portion at dinner, no second helping.'],
+  woke:['Same wake time','Up at the same time every day, even after a bad night.']
+};
+const avgR = ks => ks.length ? ks.reduce((t,k)=>t+S.days[k].rating,0)/ks.length : null;
+const ratedKeys = () => Object.keys(S.days).filter(k=>S.days[k].rating!=null && k<=TODAY()).sort();
+function weekStats(){
+  const ks=ratedKeys(), best={};
+  SIG.forEach(([id,label,test])=>[0,1].forEach(lag=>{
+    const w=[], wo=[];
+    ks.forEach(k=>{ const src = lag ? S.days[key(addDays(parse(k),-1))] : S.days[k]; if(!src||!src.ci) return; (test(src.ci,src)?w:wo).push(k); });
+    if(w.length<2 || wo.length<2) return;
+    const e={id, label, lag, n:w.length, m:wo.length, with:avgR(w), without:avgR(wo)}; e.diff=e.with-e.without;
+    if(!best[id] || Math.abs(e.diff)>Math.abs(best[id].diff)) best[id]=e;
+  }));
+  return {ks, list:Object.values(best).filter(e=>Math.abs(e.diff)>=.7).sort((a,b)=>a.diff-b.diff)};
+}
+const effLevel = e => e.n>=8&&Math.abs(e.diff)>=1.5 ? 'likely' : e.n>=4&&Math.abs(e.diff)>=1 ? 'worth testing' : 'hunch';
+const weekLevel = () => Math.min(3, Math.floor(ratedKeys().length/7));
+function dayBrief(k){
+  const c=S.days[k].ci||{}, out=[];
+  if(c.sleep) out.push(sleepH(c.sleep).toFixed(1).replace('.0','')+' h sleep');
+  if(hasDrinks(c)) out.push(fmtL(fluidsL(c))+' to drink');
+  if(c.caffeine!=null) out.push(c.caffeine+' cup'+(c.caffeine===1?'':'s')+' of coffee');
+  if(c.meal) out.push(c.meal==='no'||c.meal==='yesterday'?'meals on time':'a skipped or late meal');
+  if(c.stress!=null) out.push('stress '+c.stress+'/5');
+  return out.join(', ')||'no detail logged';
+}
+function vWeeks(){
+  const W=weekStats(), ks=W.ks, n=ks.length, lvl=Math.min(3,Math.floor(n/7));
+  let h='';
+  if(lvl<3){ const need=(lvl+1)*7-n; h+='<section class="tile lav" style="gap:10px"><div class="wk-h"><h2 style="font-weight:500;font-size:22px">Week '+(lvl+1)+' insights</h2><span class="tag">'+n+' of '+(lvl+1)*7+'</span></div><div class="meter" style="background:var(--card)"><i style="width:'+(n-lvl*7)/7*100+'%"></i></div><p class="small">Unlock after '+need+' more rated day'+(need===1?'':'s')+'. '+['Week 1 shows your baseline and how your best and hardest days differed.','Week 2 shows what moves your rating, the same day or the day after.','Week 3 ranks your top suspects and gives you an experiment to try.'][lvl]+'</p></section>'; }
+  const row = e => '<div class="lrow" style="flex-direction:column;align-items:stretch;gap:6px"><div class="wk-h"><span style="font-weight:500">'+esc(e.label)+'</span>'+(e.diff<0?badge(effLevel(e)):'<span class="tag">helps</span>')+'</div><span class="small">'+Math.abs(e.diff).toFixed(1)+' points '+(e.diff<0?'lower':'higher')+' '+(e.lag?'the day after':'on those days')+' · '+e.with.toFixed(1)+' vs '+e.without.toFixed(1)+' · '+e.n+' day'+(e.n===1?'':'s')+'</span><div class="pbar"><i style="width:'+Math.min(100,Math.abs(e.diff)/3*100)+'%;background:'+(e.diff<0?'var(--coral)':'var(--lav)')+'"></i></div></div>';
+  if(lvl>=3){
+    const bad=W.list.filter(e=>e.diff<0).slice(0,3), good=W.list.filter(e=>e.diff>0).slice(-2).reverse();
+    h+='<section class="tile ink" style="gap:4px"><div class="wk-h"><span class="label">Week 3 · '+n+' rated days</span><span class="tag">new</span></div><h2 style="font-weight:500;font-size:24px;margin:4px 0 6px">Your top suspects</h2>';
+    h+=bad.length?bad.map(row).join(''):'<p class="small">Nothing stands out yet. Your ratings look steady across the board.</p>';
+    if(good.length) h+='<span class="label" style="padding-top:12px">Linked to better days</span>'+good.map(row).join('');
+    // food
+    const withMeals=ks.filter(k=>S.days[k].ci&&S.days[k].ci.meals), cnt={};
+    withMeals.forEach(k=>new Set(allItems(S.days[k].ci)).forEach(f=>(cnt[f]=cnt[f]||[]).push(k)));
+    const foods=Object.entries(cnt).map(([f,w])=>{ const wo=withMeals.filter(k=>!w.includes(k)); return w.length>=3&&wo.length>=3?{f,n:w.length,diff:avgR(w)-avgR(wo)}:null; }).filter(x=>x&&Math.abs(x.diff)>=.8).sort((a,b)=>a.diff-b.diff);
+    if(foods.length) h+='<span class="label" style="padding-top:12px">Food</span>'+foods.slice(0,3).map(x=>'<div class="lrow"><span>'+esc(x.f)+'</span><span class="small">'+Math.abs(x.diff).toFixed(1)+' '+(x.diff<0?'lower':'higher')+' · '+x.n+' days</span></div>').join('');
+    // attack timing
+    const at=S.attacks.filter(a=>a.done&&ks.length&&a.date>=ks[0]);
+    if(at.length>=3){ const part=t=>{ const m=toMin(t); return m<720?'morning':m<1020?'afternoon':m<1260?'evening':'night'; };
+      const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0]; const pc={}, wd={}; at.forEach(a=>{ pc[part(a.start)]=(pc[part(a.start)]||0)+1; const w=DOW[parse(a.date).getDay()]; wd[w]=(wd[w]||0)+1; });
+      const p=top(pc), w=top(wd);
+      h+='<span class="label" style="padding-top:12px">Attacks</span><p class="small" style="padding:8px 0">'+p[1]+' of '+at.length+' started in the '+p[0]+'.'+(w[1]>=2?' '+w[1]+' were on a '+w[0]+'.':'')+'</p>'; }
+    const tryE=bad.find(e=>EXP[e.id]);
+    if(tryE){ const x=EXP[tryE.id], on=S.plan.experiments.some(e=>e.title===x[0]&&daysLeft(e.to)>0);
+      h+='<div class="tile" style="background:rgba(246,244,240,.08);color:inherit;gap:8px;margin-top:12px"><span class="label">Try for 2 weeks</span><b style="font-size:18px">'+esc(x[0])+'</b><p class="small">'+esc(x[1])+' Then Mouch! compares your ratings.</p>'+(on?'<span class="tag">Running · see Today</span>':'<button class="btn coral block" data-a="expStart:'+tryE.id+'">Start this experiment</button>')+'</div>'; }
+    h+='</section>';
+  }
+  if(lvl>=2){
+    const top=W.list.filter(e=>e.diff<0).slice(0,4), up=W.list.filter(e=>e.diff>0).slice(-2).reverse();
+    h+='<section class="tile" style="gap:4px"><span class="label">Week 2</span><h2 style="font-weight:500;font-size:22px;margin:4px 0 6px">What moves your rating</h2><p class="small" style="margin-bottom:6px">Your average on days with each thing vs without it. "The day after" means it showed up the day before.</p>'+(top.length||up.length?top.concat(up).map(row).join(''):'<p class="small">No clear differences yet. Keep logging.</p>')+'</section>';
+  }
+  if(lvl>=1){
+    const last=ks.slice(-14), rs=last.map(k=>S.days[k].rating), cis=last.map(k=>S.days[k].ci).filter(Boolean);
+    const mean=xs=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:null, f1=v=>v==null?'—':v.toFixed(1);
+    const sl=mean(cis.filter(c=>c.sleep).map(c=>sleepH(c.sleep))), fl=mean(cis.filter(hasDrinks).map(fluidsL)), cf=mean(cis.filter(c=>c.caffeine!=null).map(c=>c.caffeine));
+    const mt=cis.filter(c=>c.meal), onT=mt.length?Math.round(mt.filter(c=>c.meal==='no'||c.meal==='yesterday').length/mt.length*100):null;
+    const atk=S.attacks.filter(a=>last.length&&a.date>=last[0]).length;
+    const sorted=last.slice().sort((a,b)=>S.days[b].rating-S.days[a].rating), hi=sorted[0], lo=sorted[sorted.length-1];
+    h+='<section class="tile mist" style="gap:10px"><span class="label">Week 1 · your baseline</span><div class="bento" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[[f1(mean(rs)),'avg rating'],[sl==null?'—':f1(sl)+'h','avg sleep'],[fl==null?'—':f1(fl)+' L','avg drinks'],[f1(cf),'cups coffee'],[onT==null?'—':onT+'%','meals on time'],[atk,'attacks']].map(x=>'<div class="tile stat" style="padding:12px;gap:2px"><b class="num">'+x[0]+'</b><span class="tiny">'+x[1]+'</span></div>').join('')+'</div>';
+    if(hi&&lo&&S.days[hi].rating!==S.days[lo].rating) h+='<div class="rec"><span class="ri">'+ic('spark','s')+'</span><div><b>Best: '+fmtShort(hi)+' · '+S.days[hi].rating+'</b><p class="small">'+esc(dayBrief(hi))+'</p></div></div><div class="rec"><span class="ri">'+ic('warn','s')+'</span><div><b>Hardest: '+fmtShort(lo)+' · '+S.days[lo].rating+'</b><p class="small">'+esc(dayBrief(lo))+'</p></div></div>';
+    h+='</section>';
+  }
+  return h;
+}
+
+/* ---------- a plan for a day, made from the day before, the weather and your own patterns ---------- */
+function dayPlan(k){
+  const pk=key(addDays(parse(k),-1)), p=S.days[pk]||{}, c=p.ci||{}, wx=wxFor(k), out=[];
+  const sus={}; weekStats().list.forEach(e=>{ if(e.diff<0) sus[e.id]=e; });
+  const mine = id => sus[id] ? ' Your data: '+Math.abs(sus[id].diff).toFixed(1)+' points lower '+(sus[id].lag?'the day after':'on those days')+'.' : '';
+  const add = (id, pri, icon, title, body) => out.push({id, pri:pri+(sus[id]?20:0), icon, title, body});
+  const was = k===TODAY() ? 'Yesterday' : k===key(addDays(NOW(),1)) ? 'Today' : 'The day before';
+  const e=S.plan.experiments[0];
+  if(e && daysLeft(e.to)>0) add('exp', 90, 'check', e.title, e.rule);
+  const pr = k===key(addDays(NOW(),1)) ? S.weather.tomorrow : k===TODAY() ? S.weather.today : 0;
+  if(Math.abs(pr)>=S.weather.threshold) add('press', 80, 'pill', 'Carry '+(bestMed()?bestMed().name:'your painkiller'), 'Pressure '+(pr>0?'rises':'drops')+' '+Math.abs(pr)+' hPa. Treat early if pain starts.');
+  const sl = c.sleep&&c.sleep.usual===false ? sleepH(c.sleep) : null;
+  add('sleep', sl!=null&&sl<7?60:30, 'bed', sl!=null&&sl<7?'Make up sleep: in bed by 10:30 PM':'In bed by 11 PM, up by 7 AM', (sl!=null&&sl<7?was+' you slept '+sl.toFixed(1).replace('.0','')+' h. ':'')+'Keep your usual wake time.'+mine('sleep'));
+  const M=c.meals||{}, late=(m,t)=>m&&(m.skip||(m.items.length&&m.time&&toMin(m.time)>toMin(t)));
+  const mealBad = late(M.breakfast,'10:30')||late(M.lunch,'14:30')||c.meal==='today'||c.meal==='both';
+  add('meal', mealBad?55:25, 'bowl', 'Breakfast by 9 AM, lunch by 1:30 PM', (mealBad?was+' a meal was skipped or late. ':'')+'Protein with each: eggs, ful, shiro or misir.'+mine('meal'));
+  const f = hasDrinks(c) ? fluidsL(c) : null, hot = wx && (wx.tmax>=27 || wx.uv>=8);
+  add('water', f!=null&&f<1.5?55:hot?50:35, 'drop', 'Drink '+(hot?'2.5':'2')+' L: 1 L before noon', (f!=null?was+' you had '+fmtL(f)+'. ':'')+(hot?'It will be hot: add an electrolyte drink in the afternoon.':'At 2,350 m you lose water faster than you feel it.')+mine('water'));
+  if(c.caffeine>=4 || c.lastCaf==='late' || c.lastCaf==='evening') add('caf', 45, 'no', 'Max 3 cups, all before 2 PM', was+' you had '+c.caffeine+' cup'+(c.caffeine===1?'':'s')+(c.lastCaf==='late'||c.lastCaf==='evening'?', the last one late':'')+'.'+mine('caf')+mine('latecaf'));
+  else if(c.caffeine===0) add('cafnone', 40, 'drop', 'Have your usual morning coffee', 'Stopping suddenly can bring on a headache.');
+  if(dayMacros(c).s>=3) add('sugar', 40, 'no', 'Sweets only after a meal', was+' had a lot of sugar. Soda and sugary tea on an empty stomach spike, then drop.'+mine('sugar'));
+  if(c.screen==='yes'||['5-7','7+','5+'].includes(c.phone)) add('screen', 35, 'screen', 'A screen break every 90 minutes', 'Look far away for 20 seconds, and dim the screen after sunset.'+mine('screen'));
+  if(c.stress>=4) add('stress', 35, 'walk', 'Plan one calm break', 'A 15-minute walk without your phone. If the day is quieter, keep your usual wake time and meals.'+mine('stress'));
+  if(wx && wx.aqi>100) add('air', 50, 'no', 'Keep outdoor time short', 'Air quality '+wx.aqi+'. Skip outdoor workouts and close windows on busy roads.');
+  if(wx && wx.uv>=8) add('uv', 45, 'spark', 'Sunglasses and a hat outside', 'UV '+Math.round(wx.uv)+'. Glare is a common trigger. Find shade around midday.');
+  if(S.attacks.slice(-5).some(a=>a.symptoms.includes('Nausea'))) add('ginger', 20, 'drop', 'Keep ginger tea handy', 'Your recent attacks came with nausea. Many people find ginger settles it.');
+  return out.sort((a,b)=>b.pri-a.pri).slice(0,6);
+}
+function planCard(k, tick){
+  const items=dayPlan(k), d=S.days[k]||{}, done=d.planDone||{}, n=items.filter(x=>done[x.id]).length;
+  let h='<section class="tile" style="gap:0;padding:16px 18px"><div class="sec-h" style="margin-bottom:6px"><h2 style="font-weight:400;font-size:24px;letter-spacing:-.02em">'+(tick?'Today\'s plan':'For tomorrow')+'</h2><span class="small num">'+(tick?n+' of '+items.length+' done':fmtShort(k))+'</span></div>';
+  if(!tick) h+='<p class="small" style="padding-bottom:6px">From today\'s log and tomorrow\'s weather. It turns into a checklist in the morning.</p>';
+  h+=items.map(x=>tick
+    ? '<button class="plan-i'+(done[x.id]?' done':'')+'" data-a="planTick:'+x.id+'" aria-pressed="'+!!done[x.id]+'"><span class="ri">'+ic(done[x.id]?'check':x.icon,'s')+'</span><span><b>'+esc(x.title)+'</b><span class="small" style="display:block">'+esc(x.body)+'</span></span></button>'
+    : '<div class="plan-i"><span class="ri">'+ic(x.icon,'s')+'</span><span><b>'+esc(x.title)+'</b><span class="small" style="display:block">'+esc(x.body)+'</span></span></div>').join('');
+  return h+'</section>';
+}
+
 /* ---------- views ---------- */
 function vToday(){
   const tk = TODAY(), d = day(tk), fc = forecast(), adv = advice(fc), tmac = dayMacros(d.ci);
@@ -738,6 +896,8 @@ function vToday(){
          const sub = st==='done' ? 'Done · '+fmt12(hm(new Date(d.secs[s.id]))) : st==='locked' ? 'Opens '+fmt12(S.sections[s.id]) : n+' quick questions';
          return '<button class="sec '+st+'" data-a="'+(st==='locked'?'secLocked:'+s.id:'openSec:'+s.id)+'" aria-label="'+s.name+' log: '+sub+'"><span class="si">'+ic(st==='done'?'check':s.icon,'s')+'</span><span><b>'+s.name+'</b><span class="small">'+sub+'</span></span>'+(st==='open'?'<span class="btn sm dark">Start</span>':st==='done'?'<span class="link">Edit</span>':'')+'</button>'; }).join('')
      + '</section>';
+  { const wl=weekLevel(); if(wl>(S.insSeen||0)) h += '<button class="tile lav" style="flex-direction:row;align-items:center;gap:12px;text-align:left" data-a="go:insights"><span class="ri" style="width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:grid;place-items:center;flex:none">'+ic('spark','s')+'</span><span style="flex:1"><b style="font-weight:600">Week '+wl+' insights are ready</b><span class="small" style="display:block">'+['','Your baseline and your best vs hardest days.','What moves your rating, from your own days.','Your top suspects and an experiment to try.'][wl]+'</span></span>'+ic('next','s')+'</button>'; }
+  h += toMin(hm(NOW()))>=toMin(S.sections.evening) || d.rating!=null ? planCard(key(addDays(NOW(),1)), false) : planCard(tk, true);
   // rating
   h += '<section class="tile" style="gap:14px;padding:18px"><div class="sec-h"><h2 style="font-weight:400;font-size:26px;letter-spacing:-.02em">How was today?</h2>'+(d.rating?'<span class="tag">'+band(d.rating)+' day</span>':'')+'</div>'+rateCtl(tk);
   if(d.rating && V.followUp) h+='<div style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:12px"><p><b>Saved.</b> Any headache today, even a mild one?</p><div class="row2"><button class="btn" data-a="headache:1">Yes</button><button class="btn" data-a="headache:0">No</button></div></div>';
@@ -758,6 +918,8 @@ function vToday(){
   const ph = (d.ci&&d.ci.phone) || (yd.ci&&yd.ci.phone);
   const wt = wxFor(tk), wm = wxFor(key(addDays(NOW(),1)));
   h += '<div class="bento">';
+  { const wc=d.ci||{}, fl=fluidsL(wc), extra=DRINKS.filter(x=>wc.drinks&&wc.drinks[x[0]]).map(x=>wc.drinks[x[0]]+' '+x[1].toLowerCase()).join(' · ');
+    h += '<div class="tile span2" style="gap:10px"><div class="t-head">Drinks today'+ic('drop','s')+'</div><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span class="t-big num">'+fmtL(fl)+'</span><span class="small">of '+WATER_GOAL+' L'+(extra?' · incl. '+esc(extra):'')+'</span></div><div class="meter"><i style="width:'+Math.min(100,fl/WATER_GOAL*100)+'%"></i></div><div class="pills"><button class="chip" data-a="qW:water:0.25">'+ic('plus','s')+'Glass</button><button class="chip" data-a="qW:water:0.5">'+ic('plus','s')+'0.5 L</button><button class="chip" data-a="qW:ginger:1">'+ic('plus','s')+'Ginger</button><button class="chip" data-a="qW:electro:1">'+ic('plus','s')+'Electrolytes</button>'+((V.wHist||[]).length?'<button class="chip" data-a="qWundo">Undo</button>':'')+'</div></div>'; }
   h += '<button class="tile lav" style="text-align:left" data-a="openSec:morning"><div class="t-head">Sleep '+ic('next','s')+'</div><span class="t-big num">'+(sh?(Math.floor(sh)+'h '+pad(Math.round((sh%1)*60))+'m'):'—')+'</span><span class="small">'+(sl&&!sl.usual?fmt12(sl.bed)+' → '+fmt12(sl.wake):sl?'Your usual hours':'Not logged yet')+(sl===hs&&hs?' · Apple Health':'')+'</span></button>';
   h += '<div class="tile ink"><div class="t-head">Screens '+ic('phone','s')+'</div><span class="t-big num">'+(ph?PHONE[ph]||ph:'—')+'</span><span class="small">Phone · '+(ph?'from your evening log':'asked in the evening')+'</span></div>';
   h += '<button class="tile coral" style="text-align:left" data-a="sheet:wx" aria-label="Conditions in '+esc(S.weather.loc)+'"><div class="t-head"><span style="display:flex;gap:6px;align-items:center">'+ic('pin','s')+esc(S.weather.loc)+'</span>'+ic('cloud','s')+'</div><span class="t-big num" style="font-size:38px;font-weight:500">'+(S.weather.tomorrow>0?'+':'')+S.weather.tomorrow+'</span><span class="small">hPa tomorrow · '+(S.weather.today>0?'+':'')+S.weather.today+' today</span>'+(wt&&wt.aqi!=null?'<span class="tiny">Air '+wt.aqi+' · UV '+Math.round(wt.uv||0)+(wm&&wm.aqi!=null?' · tomorrow '+wm.aqi+' / '+Math.round(wm.uv||0):'')+'</span>':'')+'</button>';
@@ -767,8 +929,8 @@ function vToday(){
   if(S.health.token){ const x=th||{}, cell=(v,l)=>'<div><b class="num" style="font-size:24px;font-weight:500;letter-spacing:-.02em;display:block">'+(v==null?'—':v)+'</b><span class="tiny">'+l+'</span></div>';
     h += '<button class="tile mist span2" style="text-align:left" data-a="sheet:health"><div class="t-head">Apple Health'+ic('next','s')+'</div><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">'+cell(x.steps!=null?x.steps.toLocaleString():null,'steps')+cell(x.exerciseMin,'exercise min')+cell(x.restingHr,'resting HR')+cell(x.hrv,'HRV ms')+'</div><span class="tiny">'+(th?'Synced '+fmt12(hm(new Date(th.syncedAt)))+(th.menstrual?' · period day':''):'Nothing from your Shortcut yet today')+'</span></button>'; }
   h += '</div>';
-  if(exp && daysLeft(exp.to)>0){ const doneN=Object.values(exp.done).filter(x=>x===true).length, dt=exp.done[tk];
-    h+='<section class="tile" style="flex-direction:row;align-items:center;gap:14px"><div class="ring" style="width:64px;height:64px;flex:none">'+ringSvg(64, Math.min(1,doneN/21), 'var(--card-2)', 'var(--coral)', 7)+'<span class="num" style="font-size:15px">'+doneN+'/21</span></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px"><div><span class="label">Experiment</span><p style="font-size:18px;font-weight:500;line-height:1.2">'+esc(exp.title)+'</p><p class="small">'+esc(exp.rule)+' Until '+fmtShort(exp.to)+'.</p></div><div class="row2"><button class="btn sm '+(dt===true?'dark':'')+'" data-a="exp:1">'+(dt===true?ic('check','s'):'')+'Done</button><button class="btn sm '+(dt===false?'dark':'')+'" data-a="exp:0">Not today</button></div></div></section>'; }
+  if(exp && daysLeft(exp.to)>0){ const doneN=Object.values(exp.done).filter(x=>x===true).length, dt=exp.done[tk], span=Math.max(1,Math.round((parse(exp.to)-parse(exp.from||tk))/864e5));
+    h+='<section class="tile" style="flex-direction:row;align-items:center;gap:14px"><div class="ring" style="width:64px;height:64px;flex:none">'+ringSvg(64, Math.min(1,doneN/span), 'var(--card-2)', 'var(--coral)', 7)+'<span class="num" style="font-size:15px">'+doneN+'/'+span+'</span></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px"><div><span class="label">Experiment</span><p style="font-size:18px;font-weight:500;line-height:1.2">'+esc(exp.title)+'</p><p class="small">'+esc(exp.rule)+' Until '+fmtShort(exp.to)+'.</p></div><div class="row2"><button class="btn sm '+(dt===true?'dark':'')+'" data-a="exp:1">'+(dt===true?ic('check','s'):'')+'Done</button><button class="btn sm '+(dt===false?'dark':'')+'" data-a="exp:0">Not today</button></div></div></section>'; }
   // recent panel
   const items = [];
   Object.keys(S.days).sort().reverse().slice(0,10).forEach(k=>{ const x=S.days[k]; if(x.rating!=null) items.push({k, type:'day', t:'Rated '+x.rating+' · '+band(x.rating)+' day', s:fmtLong(k)+(x.ci?' · check-in done':''), r:x.rating}); });
@@ -830,7 +992,7 @@ function vDay(){
   h+='<section class="tile'+ro+'" style="gap:14px">'+rateCtl(k)+'<div class="lrow" style="border-top:1px solid var(--line)"><span>Headache</span>'+tog(d.headache,'toggleDayHeadache','Headache')+'</div></section>';
   h+='<section class="tile" style="gap:2px"><div class="sec-h"><span class="label">Detail</span>'+(ed?'<button class="link" data-a="editDetail:'+k+'">'+(c?'Edit':'Add')+'</button>':'')+'</div>';
   if(c){ const kv=(a,b)=>'<div class="lrow" style="min-height:44px;align-items:flex-start"><span class="small" style="width:90px;flex:none">'+a+'</span><span style="text-align:right">'+b+'</span></div>';
-    h+=kv('Sleep', (!c.sleep||c.sleep.usual)?'Usual hours':fmt12(c.sleep.bed)+' – '+fmt12(c.sleep.wake))+(c.woke?kv('Woke up',{fresh:'Refreshed',ok:'OK',tired:'Tired',headache:'With a headache'}[c.woke]):'')+kv('Stress', (c.stress??'—')+' (yesterday '+(c.stressY??'—')+')')+kv('Meals', mealSummary(c))+kv('Caffeine', (c.caffeine??'—')+' cups')+kv('Water', c.water==='no'?'Not really':'Enough')+kv('Screens', (c.screen==='yes'?'Heavy':'Normal')+(c.phone?' · phone '+(PHONE[c.phone]||c.phone):'')+(d.mac?' · Mac '+hhmm(d.mac):''))+kv('Signs', esc((c.signs||[]).join(', ')||'None'))+kv('Tags', esc((c.tags||[]).join(', ')||'—'))+(c.note?kv('Note','<i>'+esc(c.note)+'</i>'):''); }
+    h+=kv('Sleep', (!c.sleep||c.sleep.usual)?'Usual hours':fmt12(c.sleep.bed)+' – '+fmt12(c.sleep.wake))+(c.woke?kv('Woke up',{fresh:'Refreshed',ok:'OK',tired:'Tired',headache:'With a headache'}[c.woke]):'')+kv('Stress', (c.stress??'—')+' (yesterday '+(c.stressY??'—')+')')+kv('Meals', mealSummary(c))+kv('Caffeine', (c.caffeine??'—')+' cups')+kv('Drinks', esc(drinkStr(c)))+kv('Screens', (c.screen==='yes'?'Heavy':'Normal')+(c.phone?' · phone '+(PHONE[c.phone]||c.phone):'')+(d.mac?' · Mac '+hhmm(d.mac):''))+kv('Signs', esc((c.signs||[]).join(', ')||'None'))+kv('Tags', esc((c.tags||[]).join(', ')||'—'))+(c.note?kv('Note','<i>'+esc(c.note)+'</i>'):''); }
   else h+='<p class="small">No check-in for this day.</p>';
   if(d.health){ const x=d.health; h+='<div class="lrow" style="min-height:44px;align-items:flex-start"><span class="small" style="width:90px;flex:none">Apple Health</span><span style="text-align:right">'+[x.sleepFrom?'slept '+fmt12(x.sleepFrom)+' – '+fmt12(x.sleepTo):'', x.steps!=null?x.steps.toLocaleString()+' steps':'', x.exerciseMin!=null?x.exerciseMin+' exercise min':'', x.restingHr?'resting HR '+x.restingHr:'', x.hrv?'HRV '+x.hrv+' ms':'', x.menstrual?'period day':''].filter(Boolean).join(' · ')+'</span></div>'; }
   h+='</section><div class="pills">'+S.doses.filter(x=>x.date===k).map(x=>'<span class="pill" style="border-color:var(--line)">'+ic('pill','s')+esc(x.med)+' · '+fmt12(x.time)+'</span>').join('')+'<span class="pill" style="border-color:var(--line)">'+ic('cloud','s')+esc(S.weather.loc)+' · '+(d.press>0?'+':'')+(d.press||0)+' hPa vs day before</span>'+(d.wx&&d.wx.aqi!=null?'<span class="pill" style="border-color:var(--line)">Air '+d.wx.aqi+' · UV '+Math.round(d.wx.uv||0)+' · '+Math.round(d.wx.tmax)+'°C</span>':'')+'</div>';
@@ -860,6 +1022,9 @@ function vInsights(){
   const nAtk = S.attacks.filter(a=>a.done).length;
   const pairRow = r => '<div style="display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-weight:500">'+esc(r.label)+'</span>'+badge(r.level)+'</div><div style="display:grid;grid-template-columns:44px 1fr 62px;gap:8px;align-items:center"><span class="tiny">Pain</span><div class="pbar"><i style="width:'+(r.pn?r.p/r.pn*100:0)+'%;background:var(--coral)"></i></div><span class="tiny num" style="text-align:right">'+r.p+' of '+r.pn+'</span></div><div style="display:grid;grid-template-columns:44px 1fr 62px;gap:8px;align-items:center"><span class="tiny">Great</span><div class="pbar"><i style="width:'+(r.gn?r.g/r.gn*100:0)+'%;background:var(--lav)"></i></div><span class="tiny num" style="text-align:right">'+r.g+' of '+r.gn+'</span></div></div>';
   let h='<header class="head"><h1 class="hello">Insights</h1></header>';
+  { const wl=weekLevel(); if((S.insSeen||0)<wl){ S.insSeen=wl; setTimeout(save,0); } }
+  h+=vWeeks();
+  h+='<span class="label" style="padding:10px 4px 0">Month by month</span>';
   h+='<div class="pills" style="justify-content:space-between;align-items:center"><button class="roundbtn" data-a="insMove:-1" aria-label="Previous month">'+ic('back','s')+'</button><span style="font-weight:600">'+MON[im[1]]+' '+im[0]+'</span><button class="roundbtn" data-a="insMove:1" aria-label="Next month">'+ic('next','s')+'</button></div>';
   if(rated.length<3){ h+='<section class="tile lav" style="gap:10px;padding:20px"><h2 style="font-weight:500;font-size:24px">Patterns need a few weeks</h2><p class="small">Rate each evening and log attacks when they come. Comparisons start after 3 pain days and 3 great days.</p><div class="meter"><i style="width:'+(rated.length/7*100)+'%"></i></div><span class="tiny">'+rated.length+' of 7 ratings this month</span></section>'+dock('insights'); return h; }
   h+='<div class="bento" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+[[hd,'headache days','ink'],[atks.length,'attacks','coral'],[avg,'avg rating',''],[lost,'lost days',''],[peak,'avg peak',''],[ks.length-rated.length,'not rated','']].map(s=>'<div class="tile stat '+s[2]+'" style="padding:14px;gap:2px"><b class="num">'+s[0]+'</b><span class="tiny">'+s[1]+'</span></div>').join('')+'</div>';
@@ -971,7 +1136,7 @@ const Q = [
   {id:'snacks', q:'Snacks and drinks?', hint:'Anything between meals. Coffee and tea come next.', type:'meal', slot:'snacks'},
   {id:'caffeine', q:'Cups of coffee or tea with caffeine?', hint:'Your usual is about 2. A coffee ceremony is about 3.', type:'s6'},
   {id:'lastCaf', q:'When was the last one?', type:'one', skipIf:a=>a.caffeine===0, opts:[['morning','Morning','before noon'],['early','Early afternoon','noon – 3 PM'],['late','Late afternoon','3 – 6 PM'],['evening','Evening','after 6 PM']]},
-  {id:'water', q:'Did you drink enough water?', type:'one', opts:[['yes','Yes, enough'],['no','Not really']]},
+  {id:'water', q:'How much did you drink today?', hint:'All day, in total. A glass is about 0.25 L.', type:'water'},
   {id:'ex', q:'Any exercise today?', type:'one', opts:[['none','None'],['light','Light','a walk, stretching'],['hard','Hard','a workout, sport']]},
   {id:'exY', q:'And yesterday?', type:'one', opts:[['none','None'],['light','Light','a walk, stretching'],['hard','Hard','a workout, sport']]},
   {id:'screen', q:'A heavy screen or bright-light day?', type:'screen', opts:[['no','No'],['yes','Yes']]},
@@ -980,7 +1145,7 @@ const Q = [
   {id:'tags', q:'Anything going on?', hint:'Pick all that fit, or add your own.', type:'tags', none:'Nothing special'},
   {id:'note', q:'Anything else worth remembering?', hint:'Optional.', type:'note'},
   {id:'woke', q:'How did you wake up?', type:'one', opts:[['fresh','Refreshed'],['ok','OK'],['tired','Tired'],['headache','With a headache']]},
-  {id:'waterMid', q:'Water so far today?', type:'one', opts:[['good','A good amount'],['some','Some'],['low','Barely any']]},
+  {id:'waterMid', q:'How much have you drunk so far?', hint:'A glass is about 0.25 L, a small bottle 0.5 L.', type:'water'},
   {id:'rate', q:'How was today, 1 to 10?', hint:'Tap a number to see what it means.', type:'rate'}
 ];
 const QB = Object.fromEntries(Q.map(q=>[q.id,q]));
@@ -1013,12 +1178,16 @@ function vCheckin(){
       body+='<div class="cuis" role="group" aria-label="Cuisine">'+cuis.map(c=>'<button class="cuis-b'+(c===cur?' on':'')+'" data-a="cuisine:'+encodeURIComponent(c)+'" aria-pressed="'+(c===cur)+'">'+esc(c)+'</button>').join('')+'</div>';
       body+='<div class="ci-ans" style="justify-content:flex-start;margin-top:14px">'+list.map(n=>{ const on=m.items.includes(n); return '<button class="cpill row sm'+(on?' on':'')+'" data-a="food:'+q.slot+':'+encodeURIComponent(n)+'">'+(on?ic('check','s'):'')+esc(n)+'</button>'; }).join('')+'</div>';
       body+='<div style="display:flex;gap:8px;margin-top:12px"><label for="ciFood" style="position:absolute;left:-9999px">Something else</label><input type="text" id="ciFood" placeholder="Something else" data-in="ciFood" value="'+esc(V.ciFood||'')+'"><button class="arrow" data-a="foodAdd:'+q.slot+'">Add</button></div>';
-      const mm=macros(m.items), tot=Math.max(1,mm.c+mm.p);
-      body+='<div class="ci-sum">'+(m.items.length?'<span><b>'+m.items.length+' picked:</b> '+esc(m.items.join(', '))+'</span><div class="mbar"><i class="c" style="width:'+(mm.c/tot*100)+'%"></i><i class="p" style="width:'+(mm.p/tot*100)+'%"></i></div><span class="small">Carbs '+mm.c+' · Protein '+mm.p+(mm.s?' · Sugar '+mm.s:'')+' · '+macroLabel(mm)+'</span>':'<span class="small">Pick what you had, from any cuisine. Rough is fine.</span>')+'</div>';
+      const mm=macros(m.items,m), tot=Math.max(1,mm.c+mm.p);
+      body+='<div class="ci-sum">'+(m.items.length?'<span><b>'+m.items.length+' picked.</b> How much of each?</span>'+m.items.map(n=>'<div class="por"><span>'+esc(n)+'</span>'+seg(PORTIONS.map(p=>[p[0],p[1]]), porOf(m,n), 'por:'+q.slot+':'+encodeURIComponent(n))+'</div>').join('')+'<div class="mbar"><i class="c" style="width:'+(mm.c/tot*100)+'%"></i><i class="p" style="width:'+(mm.p/tot*100)+'%"></i></div><span class="small">Carbs '+mm.c+' · Protein '+mm.p+(mm.s?' · Sugar '+mm.s:'')+' · '+macroLabel(mm)+'</span>':'<span class="small">Pick what you had, from any cuisine. Rough is fine.</span>')+'</div>';
     }
   }
+  if(q.type==='water'){ const f=fluidsL(a), wl=a.waterL||0;
+    body='<div style="display:flex;flex-direction:column;align-items:center;gap:12px"><div class="step" style="padding:6px"><button data-a="wStep:-1" aria-label="Less water">'+ic('minus')+'</button><output class="num" style="font-size:40px;min-width:150px;text-align:center">'+fmtL(wl)+'</output><button data-a="wStep:1" aria-label="More water">'+ic('plus')+'</button></div><span class="small">of water · about '+Math.round(wl/.25)+' glass'+(Math.round(wl/.25)===1?'':'es')+'</span><div class="ci-ans">'+[.5,1,1.5,2,2.5,3].map(v=>'<button class="cpill row sm'+(wl===v?' on':'')+'" data-a="wSet:'+v+'">'+v+' L</button>').join('')+'</div></div>';
+    body+='<p class="ci-g" style="margin-top:22px">Other drinks</p>'+DRINKS.map(dr=>'<div class="lrow" style="border-color:#3A3C5A"><span>'+dr[1]+'<span class="tiny" style="display:block;color:#C2C2D6">'+dr[3]+'</span></span>'+stepper(String((a.drinks&&a.drinks[dr[0]])||0),'drS:'+dr[0],dr[1])+'</div>').join('');
+    body+='<p class="small" style="text-align:center;margin-top:14px">Total '+fmtL(f)+(f>=WATER_GOAL?' · goal reached':' · your goal is '+WATER_GOAL+' L')+'</p>'; }
   if(q.type==='note') body='<label for="ciNote" style="position:absolute;left:-9999px">Note</label><textarea id="ciNote" maxlength="280" data-in="note" placeholder="A shoot ran over, skipped lunch…">'+esc(a.note||'')+'</textarea><p class="small num" style="text-align:right;margin-top:6px" id="noteCount">'+(a.note||'').length+' / 280</p>';
-  const needsNext = ['sleep','multi','tags','note','screen','meal'].includes(q.type) || (q.type==='s5' && q.id==='stressY' && a.stressY!=null);
+  const needsNext = ['sleep','multi','tags','note','screen','meal','water'].includes(q.type) || (q.type==='s5' && q.id==='stressY' && a.stressY!=null);
   const nextLabel = q.type==='note' ? 'Finish' : (q.type==='multi'||q.type==='tags') && !(a[q.id]||[]).length ? (q.none) : 'Next';
   let h='<div class="full ci" role="dialog" aria-label="Check-in"><div class="full-in">';
   h+='<div class="ci-top"><button class="ci-icon" data-a="ciBack" aria-label="Back">'+ic('back')+'</button><span class="ctx">'+esc(ctx)+'</span><button class="ci-later" data-a="ciLater">Finish later</button></div>';
@@ -1041,7 +1210,7 @@ function vCiEnd(ctx){
     h+='<div class="ci-top"><span></span><span class="ctx">'+esc(ctx)+'</span><span></span></div><div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:30px"><h1 class="ci-q">Did you have a migraine attack today?</h1><div class="ci-ans" style="flex-direction:column"><button class="cpill wide" data-a="ciAtk:1">Yes, log it<small>Start and end time, pain, medication</small></button><button class="cpill wide" data-a="ciAtk:0">No, just a bad day</button></div></div>';
   } else {
     const fc=forecast();
-    h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;position:relative"><div class="orb" style="width:160px;height:160px;right:-20px;top:40px;opacity:.9"></div><span style="position:relative">'+logo(48)+'</span><h1 style="font-weight:400;font-size:52px;letter-spacing:-.04em;line-height:1;position:relative">All saved.</h1><p style="font-size:20px;line-height:1.4;color:#C2C2D6;max-width:340px;position:relative">'+(b==='great'?'Great days are the comparison the analysis needs most. Thank you.':b==='pain'?'Thanks for logging a hard day. Rest now; the rest can wait.':'Every logged day makes your patterns clearer. Thank you.')+'</p><div class="tile" style="background:#3A3C5A;color:#F6F4F0;position:relative"><span class="tiny" style="color:#C2C2D6">Risk '+fc.target+'</span><span style="font-size:28px;font-weight:500">'+fc.level+' · '+fc.score+'</span><span class="tiny" style="color:#C2C2D6">'+esc(advice(fc)[0].title)+'</span></div></div><button class="btn block coral" data-a="ciDone">Done</button>';
+    h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;position:relative"><div class="orb" style="width:160px;height:160px;right:-20px;top:40px;opacity:.9"></div><span style="position:relative">'+logo(48)+'</span><h1 style="font-weight:400;font-size:52px;letter-spacing:-.04em;line-height:1;position:relative">All saved.</h1><p style="font-size:20px;line-height:1.4;color:#C2C2D6;max-width:340px;position:relative">'+(b==='great'?'Great days are the comparison the analysis needs most. Thank you.':b==='pain'?'Thanks for logging a hard day. Rest now; the rest can wait.':'Every logged day makes your patterns clearer. Thank you.')+'</p><div class="tile" style="background:#3A3C5A;color:#F6F4F0;position:relative;gap:6px"><span class="tiny" style="color:#C2C2D6">Risk '+fc.target+' · '+fc.level+' · '+fc.score+'</span>'+(V.ci.k===TODAY()?'<span style="font-size:18px;font-weight:600">For tomorrow</span>'+dayPlan(key(addDays(NOW(),1))).slice(0,4).map(x=>'<span style="display:flex;gap:8px;align-items:center">'+ic(x.icon,'s')+esc(x.title)+'</span>').join(''):'<span class="tiny" style="color:#C2C2D6">'+esc(advice(fc)[0].title)+'</span>')+'</div></div><button class="btn block coral" data-a="ciDone">Done</button>';
   }
   return h+'</div></div>';
 }
@@ -1489,6 +1658,14 @@ const A = {
   sleepT:(f,dir)=>{ const s=ciAns().sleep; s[f]=STEP15(s[f],+dir); save(); render(); },
   ciTagAdd:()=>{ const t=V.ciTag.trim().toLowerCase(); if(t&&!allTags().includes(t)) S.tags.push(t); if(t){ const a=ciAns(); a.tags=(a.tags||[]).concat(t); } V.ciTag=''; save(); render(); },
   ciNext:()=>ciAdvance(),
+  por:(slot,n,v)=>{ const m=ciAns().meals[slot]; n=decodeURIComponent(n); m.por=m.por||{}; if(v==='one') delete m.por[n]; else m.por[n]=v; save(); render(); },
+  wStep:dir=>{ addFluid(ciAns(), V.ci.k, 'water', .25*dir); save(); render(); },
+  wSet:v=>{ const c=ciAns(); c.waterL=+v; syncWater(c, V.ci.k); save(); render(); },
+  drS:(id,dir)=>{ addFluid(ciAns(), V.ci.k, id, +dir); save(); render(); },
+  qW:(what,amt)=>{ const k=TODAY(); addFluid(ciOf(k), k, what, +amt); (V.wHist=V.wHist||[]).push([what,+amt]); save(); render(); toast(what==='water'?'+'+fmtL(+amt)+' water':(DRINKS.find(d=>d[0]===what)[1])+' added'); },
+  qWundo:()=>{ const x=(V.wHist||[]).pop(); if(!x) return; const k=TODAY(); addFluid(ciOf(k), k, x[0], -x[1]); save(); render(); },
+  planTick:id=>{ const d=day(TODAY()); d.planDone=d.planDone||{}; d.planDone[id]=!d.planDone[id]; save(); render(); },
+  expStart:id=>{ const x=EXP[id]; if(!x) return; S.plan.experiments.unshift({id:'w'+Date.now(), title:x[0], rule:x[1], from:TODAY(), to:key(addDays(NOW(),14)), done:{}}); save(); render(); toast('Started: '+x[0]); },
   mealT:(slot,dir)=>{ const m=ciAns().meals[slot]; m.time=STEP15(m.time,+dir); deriveMeal(); save(); render(); },
   mealSkip:slot=>{ const m=ciAns().meals[slot]; m.skip=!m.skip; deriveMeal(); save(); render(); },
   cuisine:c=>{ V.cuisine=decodeURIComponent(c); render(); },
