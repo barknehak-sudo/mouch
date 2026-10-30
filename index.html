@@ -1068,6 +1068,7 @@ function vAttack(){
   h+='<div class="card" style="padding:6px 14px"><button class="lrow" style="width:100%;border:0" data-a="unusual" aria-expanded="'+V.expandUnusual+'"><span>Unusual symptoms?</span>'+ic(V.expandUnusual?'minus':'plus','s')+'</button>'+(V.expandUnusual?'<div>'+UNUSUAL.map((u,i)=>'<button class="cb" data-a="flag:'+i+'"><i></i><span>'+esc(u)+'</span></button>').join('')+'</div>':'')+'</div>';
   if(ro) return h+'</div><div class="row2" style="padding:12px 0 6px"><button class="btn" data-a="atkClose">Close</button></div></div></div>';
   if(!live) h+='<button class="btn block" style="color:#C98A84" data-a="atkDelete">Delete attack</button>';
+  else h+='<button class="link" style="color:#C98A84;align-self:center" data-a="atkCancel">'+(V.atkDel?'Tap again to remove it':'Started by mistake? Remove it')+'</button>';
   h+='<div class="row2" style="position:sticky;bottom:0;padding:12px 0 6px;background:#0F1020">'+(live?'<button class="btn" data-a="atkClose">Close</button><button class="btn dark" data-a="atkOver">It\'s over</button>':'<button class="btn dark" data-a="atkDone">Done</button>')+'</div>';
   return h+'</div></div>';
 }
@@ -1423,6 +1424,7 @@ const A = {
   atkClose:()=>{ go(V.dayKey&&V.view!=='today'?'day':'today'); },
   atkOver:()=>{ const a=S.attacks.find(x=>x.id===V.atk); a.end=hm(NOW()); a.done=true; S.live=null; save(); render(); },
   atkDone:()=>{ save(); go('today'); toast('Attack saved'); },
+  atkCancel:()=>{ if(!V.atkDel){ V.atkDel=true; render(); setTimeout(()=>{ if(V.atkDel){ V.atkDel=false; if(V.view==='attack') render(); } },4000); return; } V.atkDel=false; A.atkDelete(); },
   atkDelete:()=>{ S.doses.forEach(d=>{ if(d.atk===V.atk) d.atk=null; }); S.attacks=S.attacks.filter(x=>x.id!==V.atk); if(S.live===V.atk) S.live=null; save(); go('today'); toast('Attack deleted'); },
   atkT:(f,dir)=>{ const a=S.attacks.find(x=>x.id===V.atk); a[f]=STEP15(a[f]||a.start,+dir); save(); render(); },
   peak:dir=>{ const a=S.attacks.find(x=>x.id===V.atk); a.peak=clamp((a.peak||0)+ +dir,0,10); save(); render(); },
