@@ -104,7 +104,7 @@ h1,h2,h3,p{margin:0}
 .btn.coral{background:var(--coral);color:var(--on-coral)}
 .btn.ghost{background:transparent;border:1.2px solid var(--ink)}
 .btn.block{width:100%}
-.btn.sm{min-height:44px;padding:0 16px;font-size:14px}
+.btn.sm{min-height:44px;padding:0 16px;font-size:14px;white-space:nowrap}
 .btn.danger{background:transparent;color:var(--danger);border:1.2px solid currentColor}
 .row2{display:flex;gap:8px}.row2>*{flex:1}
 
@@ -282,6 +282,42 @@ pre.json{background:var(--card);border-radius:18px;padding:14px;font:12px/1.5 ui
 .tl .nd{width:28px;height:28px;border-radius:50%;background:var(--card);display:grid;place-items:center;z-index:1}
 .tl .nd i{width:9px;height:9px;border-radius:50%}
 input.inp{min-height:50px;border-radius:999px;border:1px solid var(--line);background:var(--card);padding:0 18px;min-width:0;flex:1}
+
+/* rating meaning — shown before a rating is saved */
+.meaning{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:12px}
+.meaning .mh{display:flex;gap:12px;align-items:center}
+.meaning .mn{width:48px;height:48px;border-radius:16px;background:var(--rc);color:#22243B;display:grid;place-items:center;font-weight:600;font-size:22px;flex:none}
+.meaning .mt{font-size:22px;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.ci .rate button{background:#3A3C5A;color:#F6F4F0}
+.ci .rate button.on{background:var(--rc);color:#22243B}
+.ci .rate.picked button:not(.on){color:#8E8FAB}
+.ci .ends{color:#C2C2D6}
+.ci .meaning{border-color:#3A3C5A}
+.ci .btn{background:#3A3C5A;color:#F6F4F0}
+.ci .btn.dark{background:#F6F4F0;color:#22243B}
+
+/* day log sections */
+.sec{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;min-height:62px;border-top:1px solid var(--line);text-align:left;width:100%}
+.sec:first-of-type{border-top:0}
+.sec .si{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--card-2)}
+.sec.done .si{background:var(--mist);color:#22243B}
+.sec.locked{color:var(--ink-3)}
+.sec b{font-weight:600;display:block}
+
+/* read-only (older than 3 days) */
+.ro{pointer-events:none;opacity:.6}
+.lock-note{display:flex;gap:10px;align-items:center;background:var(--card-2);border-radius:18px;padding:12px 14px;font-size:14px;color:var(--ink-2)}
+
+/* passcode */
+.ob input[type=password]{min-height:60px;border-radius:999px;border:0;background:#3A3C5A;color:#F6F4F0;padding:0 22px;font-size:20px;width:100%;letter-spacing:.2em;text-align:center}
+.err{color:#FFB3A9;font-size:15px;text-align:center;min-height:22px}
+
+/* health setup */
+.copyrow{display:flex;gap:8px;align-items:center;background:var(--card);border-radius:16px;padding:8px 8px 8px 14px}
+.copyrow code{flex:1;min-width:0;overflow-wrap:anywhere;font:12.5px/1.4 ui-monospace,Menlo,monospace}
+ol.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:12px}
+ol.steps li b{display:block;margin-bottom:2px}
+.ctrls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
 </style>
 </head>
 <body>
@@ -347,7 +383,7 @@ const ic = (n,c='') => '<svg class="ic '+c+'" viewBox="0 0 24 24" aria-hidden="t
 /* ---------- state ---------- */
 const STORE='mouch.v3';
 function load(){ try{ const s=localStorage.getItem(STORE); return s?JSON.parse(s):null; }catch(e){ return null; } }
-function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} queueSync(); }
 
 function seed(){
   rnd = 7;
@@ -434,11 +470,30 @@ function seed(){
   };
 }
 
+/* a clean diary: the seed's settings without its sample month */
+function fresh(){
+  const f=seed();
+  return Object.assign(f,{sample:false, days:{}, attacks:[], doses:[], pastPlans:[],
+    plan:Object.assign(f.plan,{month:'No plan yet', received:null, findings:[], experiments:[], food:[], nudges:[]}),
+    weather:Object.assign(f.weather,{today:0, tomorrow:0}),
+    screen:Object.assign(f.screen,{mac:{on:false}, pc:{on:false}})});
+}
+/* v2: the sample month goes, and the diary gains a passcode, push notifications, timed day-log sections, live weather and Apple Health */
+function migrate(){
+  if(S.sample) S=Object.assign(fresh(), {name:S.name, theme:S.theme, nightDark:S.nightDark});
+  if(!S.notify) S.notify={on:false, morning:'08:00', midday:'13:00', water:'16:00', evening:'19:30', rating:(S.reminder&&S.reminder.time)||'21:00', weather:true, doses:true, attack:true};
+  if(!S.sections) S.sections={morning:'05:00', midday:'12:00', evening:'18:00'};
+  if(!S.health) S.health={token:null, last:null};
+  if(S.lock===undefined) S.lock=null;
+  if(!S.device) S.device='d-'+Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');
+  S.v=2;
+}
 let S = load() || seed();
+migrate(); save();
 // keep "today" fresh if the stored seed is from an earlier day
 if(!S.days[TODAY()]) S.days[TODAY()] = {rating:null, headache:false, press:S.weather.today, mac:0, lastActive:''};
 
-const V = { view: S.onboarded?'today':'onboard', ob:0, dayKey:null, calMonth:null, insMonth:null, recentFilter:'all', ci:null, atk:null, flagFrom:null, sheet:null, followUp:false, importText:'', importResult:null, delTyped:'', newTag:'', newMed:'', newMedCls:'nsaid', expandUnusual:false, ciTag:'' };
+const V = { view: S.onboarded?(S.lock?'today':'setlock'):'onboard', locked:!!S.lock, pick:null, pass1:'', pass2:'', passIn:'', passErr:'', forgot:false, ob:0, dayKey:null, calMonth:null, insMonth:null, recentFilter:'all', ci:null, atk:null, flagFrom:null, sheet:null, followUp:false, importText:'', importResult:null, delTyped:'', newTag:'', newMed:'', newMedCls:'nsaid', expandUnusual:false, ciTag:'' };
 
 /* ---------- theme ---------- */
 function applyTheme(){
@@ -453,11 +508,44 @@ function applyTheme(){
 const band = r => r==null ? 'unrated' : r<=S.bands.pain ? 'pain' : r>=S.bands.great ? 'great' : 'normal';
 const day = k => S.days[k] || (S.days[k]={rating:null,headache:false,press:0,mac:0,lastActive:''});
 const isLate = t => !!t && (toMin(t)>=toMin(S.screen.lateAfter) || toMin(t)<300);
+/* today and the 3 days before can be changed; older days are read-only */
+const ageDays = k => Math.round((parse(TODAY())-parse(k))/864e5);
+const editable = k => { const n=ageDays(k); return n>=0 && n<=3; };
+
+/* the day log opens in three parts as the day goes */
+const SECS = [
+  {id:'morning', name:'Morning', icon:'bed', qs:['sleep','woke','stressY','exY','alcohol','signs']},
+  {id:'midday', name:'Midday', icon:'bowl', qs:['breakfast','lunch','waterMid']},
+  {id:'evening', name:'Evening', icon:'moon', qs:['dinner','snacks','caffeine','lastCaf','water','ex','stress','screen','tags','note','rate']}
+];
+function secState(id, k){
+  const d=S.days[k], done=d&&d.secs&&d.secs[id];
+  if(done) return 'done';
+  if(k===TODAY() && toMin(hm(NOW()))<toMin(S.sections[id])) return 'locked';
+  return 'open';
+}
+
+/* what each rating means — shown when a number is tapped, before it's saved */
+const MEAN = {
+  1:['Worst','Severe attack. You couldn\'t function — bed, dark room, the day was gone.'],
+  2:['Very bad','A strong migraine most of the day. You lost most of it.'],
+  3:['Bad','A real migraine or headache. You had to stop or cancel things.'],
+  4:['Rough','Headache or clearly unwell, but you pushed through.'],
+  5:['Meh','Off all day. Mild symptoms, below your normal.'],
+  6:['Okay','An ordinary day. A bit tired or tense, no real headache.'],
+  7:['Good','A normal good day. No headache.'],
+  8:['Very good','You felt well. Steady energy, clear head.'],
+  9:['Great','Clear-headed and full of energy all day.'],
+  10:['Best','The best kind of day. Nothing to wish away.']
+};
+const PHONE = {'<1':'< 1 h','1-3':'1–3 h','3-5':'3–5 h','5-7':'5–7 h','7+':'7 h +','5+':'5 h +'};
 
 const FACTORS = [
   {id:'sleep', label:'Short sleep', w:14, test:(c)=>c&&c.sleep&&c.sleep.usual===false&&sleepH(c.sleep)<7},
   {id:'meal', label:'Skipped or late meal', w:11, test:(c)=>c&&(c.meal==='today'||c.meal==='both')},
-  {id:'screen', label:'Heavy screen day', w:7, test:(c,d)=>(c&&c.screen==='yes')||(d&&d.mac>=S.screen.heavyFrom*60)},
+  {id:'screen', label:'Heavy screen day', w:7, test:(c,d)=>(c&&(c.screen==='yes'||['5-7','7+','5+'].includes(c.phone)))||(d&&d.mac>=S.screen.heavyFrom*60)},
+  {id:'woke', label:'Woke up tired or with a headache', w:8, test:(c)=>c&&(c.woke==='tired'||c.woke==='headache')},
+  {id:'steps', label:'Under 3,000 steps', w:4, test:(c,d)=>!!(d&&d.health&&d.health.steps!=null&&d.health.steps<3000)},
   {id:'late', label:'Worked late', w:7, test:(c,d)=>d&&isLate(d.lastActive)},
   {id:'stress', label:'Stress dropped from yesterday', w:9, test:(c)=>c&&c.stressY!=null&&c.stress!=null&&c.stressY-c.stress>=2},
   {id:'water', label:'Not enough water', w:6, test:(c)=>c&&c.water==='no'},
@@ -540,8 +628,12 @@ function forecast(){
   if(signs.length){ const pts=Math.min(14,signs.length*6); score+=pts; hits.push({id:'signs',label:'Early signs: '+signs.join(', ').toLowerCase(),pts,why:'Often a day before an attack'}); }
   if(c&&c.tags&&c.tags.includes('fasting')){ score+=6; hits.push({id:'fast',label:'Fasting',pts:6,why:''}); }
   const pr = target==='tomorrow' ? S.weather.tomorrow : S.weather.today;
-  if(Math.abs(pr)>=S.weather.threshold){ score+=12; hits.push({id:'press',label:'Pressure '+(pr>0?'+':'')+pr+' hPa '+target,pts:12,why:'3 of 7 pain days followed a 6 hPa change'}); }
+  const bigP = fs.pain.filter(k=>Math.abs(S.days[k].press||0)>=S.weather.threshold).length;
+  if(Math.abs(pr)>=S.weather.threshold){ score+=12; hits.push({id:'press',label:'Pressure '+(pr>0?'+':'')+pr+' hPa '+target,pts:12,why:fs.pain.length?bigP+' of '+fs.pain.length+' pain days followed a change this big':''}); }
   else if(Math.abs(pr)>=S.weather.threshold/2){ score+=6; hits.push({id:'press',label:'Pressure '+(pr>0?'+':'')+pr+' hPa '+target,pts:6,why:''}); }
+  const wx = wxFor(target==='tomorrow' ? key(addDays(NOW(),1)) : TODAY());
+  if(wx && wx.aqi>100){ score+=6; hits.push({id:'air',label:'Poor air quality '+target+' (AQI '+wx.aqi+')',pts:6,why:''}); }
+  if(wx && wx.uv>=8){ score+=4; hits.push({id:'uv',label:'Very strong sun '+target+' (UV '+Math.round(wx.uv)+')',pts:4,why:''}); }
   score = clamp(score, 4, 96);
   hits.sort((a,b)=>b.pts-a.pts);
   const level = score>=75?'High':score>=55?'Elevated':score>=30?'Moderate':'Low';
@@ -565,6 +657,9 @@ function advice(fc){
   if(ids.has('stress')) add('do','walk','Keep tomorrow\'s routine','A drop in stress can set off a let-down attack. Same wake time and meals, even if you rest.');
   if(ids.has('press')) add('do','pill','Carry '+(bestMed()?bestMed().name:'your painkiller'),'Pressure is changing. Treat early if pain starts.');
   if(ids.has('signs')) add('do','spark','Early signs noticed','Follow your treatment plan early if the pain starts.');
+  if(ids.has('air')) add('avoid','no','Keep outdoor time short','The air is poor. Skip the outdoor workout and keep windows on busy roads closed.');
+  if(ids.has('uv')) add('do','spark','Sunglasses and a hat outside','Bright sun and glare are common triggers. Find shade around midday.');
+  if(ids.has('woke')) add('do','bed','Go easy this morning','You woke up tired. Eat breakfast on time and keep caffeine to the morning.');
   if(!out.length) add('do','check','Nothing is stacking up','Keep meals, water and sleep regular and enjoy the evening.');
   return out;
 }
@@ -583,10 +678,17 @@ const daysLeft = k => Math.max(0, Math.round((parse(k)-parse(TODAY()))/864e5));
 
 /* ---------- small renderers ---------- */
 const RC = r => 'var(--r'+r+')';
-function rateCtl(sel, act){
+const wxFor = k => S.weather.days && S.weather.days[k];
+const aqiWord = a => a<=50?'good':a<=100?'moderate':a<=150?'unhealthy for some':a<=200?'unhealthy':'very unhealthy';
+/* the 1–10 scale for day k. A tap only picks; the meaning panel underneath saves it */
+function rateCtl(k){
+  const sel = V.pick&&V.pick.k===k ? V.pick.n : day(k).rating;
   let h='<div class="rate'+(sel?' picked':'')+'" role="group" aria-label="Rate the day from 1, worst pain, to 10, feeling great">';
-  for(let i=1;i<=10;i++) h+='<button style="--rc:'+RC(i)+'" class="'+(sel===i?'on':'')+'" data-a="'+act+':'+i+'" aria-pressed="'+(sel===i)+'">'+i+'</button>';
-  return h+'</div><div class="ends"><span>1 · worst pain</span><span>feeling great · 10</span></div>';
+  for(let i=1;i<=10;i++) h+='<button style="--rc:'+RC(i)+'" class="'+(sel===i?'on':'')+'" data-a="pick:'+k+':'+i+'" aria-pressed="'+(sel===i)+'">'+i+'</button>';
+  h+='</div><div class="ends"><span>1 · worst pain</span><span>feeling great · 10</span></div>';
+  if(V.pick&&V.pick.k===k){ const n=V.pick.n, m=MEAN[n], b=band(n);
+    h+='<div class="meaning" style="--rc:'+RC(n)+'"><div class="mh"><span class="mn num">'+n+'</span><div><p class="mt">'+m[0]+'</p><span class="tiny">'+(b==='pain'?'Counts as a pain day':b==='great'?'Counts as a great day':'A normal day')+'</span></div></div><p>'+esc(m[1])+'</p><div class="row2"><button class="btn" data-a="pickCancel">Cancel</button><button class="btn dark" data-a="pickSave">Save '+n+' — '+m[0]+'</button></div></div>'; }
+  return h;
 }
 const badge = l => { const n={'hunch':1,'worth testing':2,'likely':3,'confirmed':4}[l]||1; const cls={'hunch':'','worth testing':'test','likely':'likely','confirmed':'conf'}[l]||''; let d=''; for(let i=1;i<=4;i++) d+='<i class="'+(i<=n?'f':'')+'"></i>'; return '<span class="badge '+cls+'"><span class="bd">'+d+'</span>'+esc(l)+'</span>'; };
 const tog = (on, act, label) => '<button class="tog'+(on?' on':'')+'" data-a="'+act+'" role="switch" aria-checked="'+!!on+'" aria-label="'+esc(label)+'"></button>';
@@ -625,13 +727,19 @@ function vToday(){
   h += '<button class="tile '+tone+'" data-a="go:forecast" style="text-align:left;min-height:210px;padding:18px" aria-label="Migraine risk '+fc.target+': '+fc.level+'. Open forecast">'
      + '<div class="orb" style="width:'+(90+fc.score*1.1)+'px;height:'+(90+fc.score*1.1)+'px;right:-'+(10+fc.score*.25)+'px;bottom:-'+(20+fc.score*.35)+'px"></div>'
      + '<div class="t-head" style="position:relative"><span>Migraine risk '+fc.target+'</span>'+ic('next','s')+'</div>'
-     + '<div style="position:relative;display:flex;flex-direction:column;gap:2px;margin-top:6px"><span class="t-huge">'+fc.level+'</span><span class="num" style="font-size:15px;font-weight:500">'+fc.score+' / 100 · '+(fc.hits.length)+' things stacking up</span></div>'
+     + '<div style="position:relative;display:flex;flex-direction:column;gap:2px;margin-top:6px"><span class="t-huge">'+fc.level+'</span><span class="num" style="font-size:15px;font-weight:500">'+fc.score+' / 100 · '+(fc.hits.length)+(fc.hits.length===1?' thing':' things')+' stacking up</span></div>'
      + '<div class="pills" style="position:relative;max-width:72%;margin-top:auto">'+fc.hits.slice(0,3).map(x=>'<span class="tag">'+esc(x.label.split(':')[0])+'</span>').join('')+'</div></button>';
+  // day log, opening as the day goes
+  h += '<section class="tile" style="gap:4px;padding:16px 18px"><div class="sec-h" style="margin-bottom:4px"><h2 style="font-weight:400;font-size:24px;letter-spacing:-.02em">Today\'s log</h2><span class="small num">'+SECS.filter(s=>secState(s.id,tk)==='done').length+' of 3 done</span></div>'
+     + SECS.map(s=>{ const st=secState(s.id,tk), n=s.qs.filter(q=>q!=='rate'||d.rating==null).length;
+         const sub = st==='done' ? 'Done · '+fmt12(hm(new Date(d.secs[s.id]))) : st==='locked' ? 'Opens '+fmt12(S.sections[s.id]) : n+' quick questions';
+         return '<button class="sec '+st+'" data-a="'+(st==='locked'?'secLocked:'+s.id:'openSec:'+s.id)+'" aria-label="'+s.name+' log: '+sub+'"><span class="si">'+ic(st==='done'?'check':s.icon,'s')+'</span><span><b>'+s.name+'</b><span class="small">'+sub+'</span></span>'+(st==='open'?'<span class="btn sm dark">Start</span>':st==='done'?'<span class="link">Edit</span>':'')+'</button>'; }).join('')
+     + '</section>';
   // rating
-  h += '<section class="tile" style="gap:14px;padding:18px"><div class="sec-h"><h2 style="font-weight:400;font-size:26px;letter-spacing:-.02em">How was today?</h2>'+(d.rating?'<span class="tag">'+band(d.rating)+' day</span>':'')+'</div>'+rateCtl(d.rating,'rate');
+  h += '<section class="tile" style="gap:14px;padding:18px"><div class="sec-h"><h2 style="font-weight:400;font-size:26px;letter-spacing:-.02em">How was today?</h2>'+(d.rating?'<span class="tag">'+band(d.rating)+' day</span>':'')+'</div>'+rateCtl(tk);
   if(d.rating && V.followUp) h+='<div style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:12px"><p><b>Saved.</b> Any headache today, even a mild one?</p><div class="row2"><button class="btn" data-a="headache:1">Yes</button><button class="btn" data-a="headache:0">No</button></div></div>';
   else if(d.rating) h+='<div class="lrow" style="border-top:1px solid var(--line)"><span>Any headache today?</span>'+tog(d.headache,'toggleHeadache','Headache today')+'</div>';
-  h += '<div style="display:flex;justify-content:space-between;align-items:center">'+(d.rating?'<button class="link" data-a="editDetail:'+tk+'">'+(d.ci?'Edit detail':'Add detail')+'</button>':'<span class="small">One tap saves it.</span>')+(yUn?'<button class="link" data-a="openDay:'+yk+'">Rate yesterday</button>':'')+'</div></section>';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center">'+(d.rating?'<button class="link" data-a="editDetail:'+tk+'">'+(d.ci?'Edit detail':'Add detail')+'</button>':'<span class="small">Tap a number to see what it means.</span>')+(yUn?'<button class="link" data-a="openDay:'+yk+'">Rate yesterday</button>':'')+'</div></section>';
   if(d.rating && band(d.rating)==='pain' && !S.attacks.some(a=>a.date===tk)) h+='<div class="tile"><div class="t-head" style="font-size:20px;font-weight:400">A pain day. Log the attack?</div><div class="row2"><button class="btn dark" data-a="logAttackFor:'+tk+'">Log the attack</button><button class="btn">Not now</button></div></div>';
   // eat & drink
   const food = S.plan.food.filter(f=>daysLeft(f.until)>0);
@@ -642,14 +750,19 @@ function vToday(){
      + (food.length?'<div class="rec"><span class="ri" style="background:var(--ink);color:var(--on-ink)">'+ic('no','s')+'</span><div><b>'+esc(food[0].rule)+'</b><p class="small">Until '+fmtShort(food[0].until)+' · '+daysLeft(food[0].until)+' days left in your plan</p></div></div>':'')
      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><button class="link" data-a="go:forecast">All suggestions</button><button class="btn sm dark" data-a="logMeals">'+ic('bowl','s')+'Log meals</button></div></section>';
   // bento
-  const yd = fc.d||{}, sh = yd.ci? sleepH(yd.ci.sleep) : null;
+  const yd = fc.d||{}, th = d.health, hs = th&&th.sleepFrom ? {usual:false, bed:th.sleepFrom, wake:th.sleepTo} : null;
+  const sl = (d.ci&&d.ci.sleep) || hs || (yd.ci&&yd.ci.sleep), sh = sl ? sleepH(sl) : null;
+  const ph = (d.ci&&d.ci.phone) || (yd.ci&&yd.ci.phone);
+  const wt = wxFor(tk), wm = wxFor(key(addDays(NOW(),1)));
   h += '<div class="bento">';
-  h += '<div class="tile lav"><div class="t-head">Sleep '+ic('next','s')+'</div><span class="t-big num">'+(sh?(Math.floor(sh)+'h '+pad(Math.round((sh%1)*60))+'m'):'—')+'</span><span class="small">'+(yd.ci&&yd.ci.sleep&&!yd.ci.sleep.usual?fmt12(yd.ci.sleep.bed)+' → '+fmt12(yd.ci.sleep.wake):'Your usual hours')+'</span></div>';
-  h += '<div class="tile ink"><div class="t-head">Screens '+ic('screen','s')+'</div><span class="t-big num">'+hhmm(yd.mac||0).replace(' m','m').replace(' h','h')+'</span><span class="small">Mac · last active '+fmt12(yd.lastActive)+'</span></div>';
-  h += '<div class="tile coral"><div class="t-head"><span style="display:flex;gap:6px;align-items:center">'+ic('pin','s')+esc(S.weather.loc)+'</span>'+ic('cloud','s')+'</div><span class="t-big num" style="font-size:38px;font-weight:500">'+(S.weather.tomorrow>0?'+':'')+S.weather.tomorrow+'</span><span class="small">hPa tomorrow · '+(S.weather.today>0?'+':'')+S.weather.today+' today</span></div>';
+  h += '<button class="tile lav" style="text-align:left" data-a="openSec:morning"><div class="t-head">Sleep '+ic('next','s')+'</div><span class="t-big num">'+(sh?(Math.floor(sh)+'h '+pad(Math.round((sh%1)*60))+'m'):'—')+'</span><span class="small">'+(sl&&!sl.usual?fmt12(sl.bed)+' → '+fmt12(sl.wake):sl?'Your usual hours':'Not logged yet')+(sl===hs&&hs?' · Apple Health':'')+'</span></button>';
+  h += '<div class="tile ink"><div class="t-head">Screens '+ic('phone','s')+'</div><span class="t-big num">'+(ph?PHONE[ph]||ph:'—')+'</span><span class="small">Phone · '+(ph?'from your evening log':'asked in the evening')+'</span></div>';
+  h += '<button class="tile coral" style="text-align:left" data-a="sheet:wx" aria-label="Conditions in '+esc(S.weather.loc)+'"><div class="t-head"><span style="display:flex;gap:6px;align-items:center">'+ic('pin','s')+esc(S.weather.loc)+'</span>'+ic('cloud','s')+'</div><span class="t-big num" style="font-size:38px;font-weight:500">'+(S.weather.tomorrow>0?'+':'')+S.weather.tomorrow+'</span><span class="small">hPa tomorrow · '+(S.weather.today>0?'+':'')+S.weather.today+' today</span>'+(wt&&wt.aqi!=null?'<span class="tiny">Air '+wt.aqi+' · UV '+Math.round(wt.uv||0)+(wm&&wm.aqi!=null?' · tomorrow '+wm.aqi+' / '+Math.round(wm.uv||0):'')+'</span>':'')+'</button>';
   const todayQ = S.doses.filter(x=>x.date===tk).reduce((a,x)=>a+(x.qty||1),0);
   const mbars = [...Array(15)].map((_,i)=>'<i style="display:block;width:4px;border-radius:2px;height:'+(i<sm?20:9)+'px;background:'+(i<sm?(i>=WARN.simple?'#E8A33C':'var(--coral)'):'var(--card-2)')+'"></i>').join('');
   h += '<button class="tile" data-a="sheet:meds" style="text-align:left" aria-label="Painkillers: '+todayQ+' today. Open painkiller log"><div class="t-head">Painkillers '+ic('pill','s')+'</div><span class="t-big num">'+todayQ+' <span style="font-size:15px;font-weight:500;letter-spacing:0">today</span></span><span style="display:flex;gap:2px;align-items:flex-end">'+mbars+'</span><span class="tiny">'+sm+' of 15 days this month</span></button>';
+  if(S.health.token){ const x=th||{}, cell=(v,l)=>'<div><b class="num" style="font-size:24px;font-weight:500;letter-spacing:-.02em;display:block">'+(v==null?'—':v)+'</b><span class="tiny">'+l+'</span></div>';
+    h += '<button class="tile mist span2" style="text-align:left" data-a="sheet:health"><div class="t-head">Apple Health'+ic('next','s')+'</div><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">'+cell(x.steps!=null?x.steps.toLocaleString():null,'steps')+cell(x.exerciseMin,'exercise min')+cell(x.restingHr,'resting HR')+cell(x.hrv,'HRV ms')+'</div><span class="tiny">'+(th?'Synced '+fmt12(hm(new Date(th.syncedAt)))+(th.menstrual?' · period day':''):'Nothing from your Shortcut yet today')+'</span></button>'; }
   h += '</div>';
   if(exp && daysLeft(exp.to)>0){ const doneN=Object.values(exp.done).filter(x=>x===true).length, dt=exp.done[tk];
     h+='<section class="tile" style="flex-direction:row;align-items:center;gap:14px"><div class="ring" style="width:64px;height:64px;flex:none">'+ringSvg(64, Math.min(1,doneN/21), 'var(--card-2)', 'var(--coral)', 7)+'<span class="num" style="font-size:15px">'+doneN+'/21</span></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px"><div><span class="label">Experiment</span><p style="font-size:18px;font-weight:500;line-height:1.2">'+esc(exp.title)+'</p><p class="small">'+esc(exp.rule)+' Until '+fmtShort(exp.to)+'.</p></div><div class="row2"><button class="btn sm '+(dt===true?'dark':'')+'" data-a="exp:1">'+(dt===true?ic('check','s'):'')+'Done</button><button class="btn sm '+(dt===false?'dark':'')+'" data-a="exp:0">Not today</button></div></div></section>'; }
@@ -662,6 +775,7 @@ function vToday(){
   h += '<section class="panel"><div class="sec-h"><h2>Recent</h2><button class="link" data-a="go:calendar">See all</button></div><div class="pills">'+[['all','All'],['days','Ratings'],['attacks','Attacks']].map(p=>'<button class="pill'+(f===p[0]?' on':'')+'" data-a="recent:'+p[0]+'">'+p[1]+'</button>').join('')+'</div><div class="timeline">'
      + list.map(x=>'<button class="tl" data-a="openDay:'+x.k+'" style="text-align:left"><span class="nd"><i style="background:'+(x.r?RC(x.r):'var(--coral)')+'"></i></span><span style="min-width:0"><span class="small" style="display:block">'+esc(x.s)+'</span><span style="font-size:18px;font-weight:500">'+esc(x.t)+'</span></span>'+ic('next','s')+'</button>').join('')
      + '</div></section>';
+  if(!S.notify.on) h += '<button class="tile" style="flex-direction:row;align-items:center;gap:12px;text-align:left" data-a="pushOn"><span class="ri" style="width:40px;height:40px;border-radius:50%;background:var(--coral);color:#22243B;display:grid;place-items:center;flex:none">'+ic('bell','s')+'</span><span style="flex:1"><b style="font-weight:600">Turn on notifications</b><span class="small" style="display:block">Morning, midday and evening logs, water, "did it help?" and weather warnings.</span></span>'+ic('next','s')+'</button>';
   h += '<p class="tiny" style="text-align:center;padding:8px 0">Mouch! is a diary, not medical advice.</p>';
   return h + dock('today');
 }
@@ -707,14 +821,18 @@ function vCalendar(){
 function vDay(){
   const k=V.dayKey, d=day(k), c=d.ci, atks=S.attacks.filter(a=>a.date===k);
   let h='<header class="head" style="align-items:center"><button class="roundbtn" data-a="go:calendar" aria-label="Back to calendar">'+ic('back')+'</button><span style="font-weight:600">'+fmtLong(k)+'</span><span style="width:52px"></span></header>';
+  const ed = editable(k), ro = ed?'':' ro';
   if(d.rating) h+='<div><span class="tag" style="background:'+RC(d.rating)+';color:#22243B">'+band(d.rating)+' day</span></div>';
-  h+='<section class="tile" style="gap:14px">'+rateCtl(d.rating,'rateDay')+'<div class="lrow" style="border-top:1px solid var(--line)"><span>Headache</span>'+tog(d.headache,'toggleDayHeadache','Headache')+'</div></section>';
-  h+='<section class="tile" style="gap:2px"><div class="sec-h"><span class="label">Detail</span><button class="link" data-a="editDetail:'+k+'">'+(c?'Edit':'Add')+'</button></div>';
+  if(!ed) h+='<div class="lock-note">'+ic('no','s')+'<span>Older than 3 days, so this day is read-only.</span></div>';
+  h+='<section class="tile'+ro+'" style="gap:14px">'+rateCtl(k)+'<div class="lrow" style="border-top:1px solid var(--line)"><span>Headache</span>'+tog(d.headache,'toggleDayHeadache','Headache')+'</div></section>';
+  h+='<section class="tile" style="gap:2px"><div class="sec-h"><span class="label">Detail</span>'+(ed?'<button class="link" data-a="editDetail:'+k+'">'+(c?'Edit':'Add')+'</button>':'')+'</div>';
   if(c){ const kv=(a,b)=>'<div class="lrow" style="min-height:44px;align-items:flex-start"><span class="small" style="width:90px;flex:none">'+a+'</span><span style="text-align:right">'+b+'</span></div>';
-    h+=kv('Sleep', (!c.sleep||c.sleep.usual)?'Usual hours':fmt12(c.sleep.bed)+' – '+fmt12(c.sleep.wake))+kv('Stress', (c.stress??'—')+' (yesterday '+(c.stressY??'—')+')')+kv('Meals', mealSummary(c))+kv('Caffeine', (c.caffeine??'—')+' cups')+kv('Water', c.water==='no'?'Not really':'Enough')+kv('Screens', (c.screen==='yes'?'Heavy':'Normal')+(d.mac?' · Mac '+hhmm(d.mac):''))+kv('Signs', esc((c.signs||[]).join(', ')||'None'))+kv('Tags', esc((c.tags||[]).join(', ')||'—'))+(c.note?kv('Note','<i>'+esc(c.note)+'</i>'):''); }
+    h+=kv('Sleep', (!c.sleep||c.sleep.usual)?'Usual hours':fmt12(c.sleep.bed)+' – '+fmt12(c.sleep.wake))+(c.woke?kv('Woke up',{fresh:'Refreshed',ok:'OK',tired:'Tired',headache:'With a headache'}[c.woke]):'')+kv('Stress', (c.stress??'—')+' (yesterday '+(c.stressY??'—')+')')+kv('Meals', mealSummary(c))+kv('Caffeine', (c.caffeine??'—')+' cups')+kv('Water', c.water==='no'?'Not really':'Enough')+kv('Screens', (c.screen==='yes'?'Heavy':'Normal')+(c.phone?' · phone '+(PHONE[c.phone]||c.phone):'')+(d.mac?' · Mac '+hhmm(d.mac):''))+kv('Signs', esc((c.signs||[]).join(', ')||'None'))+kv('Tags', esc((c.tags||[]).join(', ')||'—'))+(c.note?kv('Note','<i>'+esc(c.note)+'</i>'):''); }
   else h+='<p class="small">No check-in for this day.</p>';
-  h+='</section><div class="pills">'+S.doses.filter(x=>x.date===k).map(x=>'<span class="pill" style="border-color:var(--line)">'+ic('pill','s')+esc(x.med)+' · '+fmt12(x.time)+'</span>').join('')+'<span class="pill" style="border-color:var(--line)">'+ic('cloud','s')+esc(S.weather.loc)+' · '+(d.press>0?'+':'')+(d.press||0)+' hPa vs day before</span></div>';
-  h+='<section class="tile" style="gap:10px"><span class="label">Attacks</span>'+(atks.length?atks.map(a=>'<button class="lrow" style="text-align:left;width:100%" data-a="openAttack:'+a.id+'"><span><b style="font-weight:600">'+fmt12(a.start)+' – '+(a.end?fmt12(a.end):'…')+'</b><span class="small" style="display:block">Peak '+(a.peak||'—')+(dosesOf(a)[0]?' · '+esc(dosesOf(a)[0].med)+', '+({none:'no relief',some:'some relief',full:'full relief'}[dosesOf(a)[0].relief]||'relief not set'):'')+'</span></span>'+ic('next','s')+'</button>').join(''):'<p class="small">None logged.</p>')+'<button class="btn block" data-a="logAttackFor:'+k+'">'+ic('plus','s')+'Add an attack on this day</button></section>';
+  if(d.health){ const x=d.health; h+='<div class="lrow" style="min-height:44px;align-items:flex-start"><span class="small" style="width:90px;flex:none">Apple Health</span><span style="text-align:right">'+[x.sleepFrom?'slept '+fmt12(x.sleepFrom)+' – '+fmt12(x.sleepTo):'', x.steps!=null?x.steps.toLocaleString()+' steps':'', x.exerciseMin!=null?x.exerciseMin+' exercise min':'', x.restingHr?'resting HR '+x.restingHr:'', x.hrv?'HRV '+x.hrv+' ms':'', x.menstrual?'period day':''].filter(Boolean).join(' · ')+'</span></div>'; }
+  h+='</section><div class="pills">'+S.doses.filter(x=>x.date===k).map(x=>'<span class="pill" style="border-color:var(--line)">'+ic('pill','s')+esc(x.med)+' · '+fmt12(x.time)+'</span>').join('')+'<span class="pill" style="border-color:var(--line)">'+ic('cloud','s')+esc(S.weather.loc)+' · '+(d.press>0?'+':'')+(d.press||0)+' hPa vs day before</span>'+(d.wx&&d.wx.aqi!=null?'<span class="pill" style="border-color:var(--line)">Air '+d.wx.aqi+' · UV '+Math.round(d.wx.uv||0)+' · '+Math.round(d.wx.tmax)+'°C</span>':'')+'</div>';
+  h+='<section class="tile" style="gap:10px"><span class="label">Attacks</span>'+(atks.length?atks.map(a=>'<button class="lrow" style="text-align:left;width:100%" data-a="openAttack:'+a.id+'"><span><b style="font-weight:600">'+fmt12(a.start)+' – '+(a.end?fmt12(a.end):'…')+'</b><span class="small" style="display:block">Peak '+(a.peak||'—')+(dosesOf(a)[0]?' · '+esc(dosesOf(a)[0].med)+', '+({none:'no relief',some:'some relief',full:'full relief'}[dosesOf(a)[0].relief]||'relief not set'):'')+'</span></span>'+ic('next','s')+'</button>').join(''):'<p class="small">None logged.</p>')+(ed?'<button class="btn block" data-a="logAttackFor:'+k+'">'+ic('plus','s')+'Add an attack on this day</button>':'')+'</section>';
+  if(!ed) return h + dock('calendar');
   if(V.confirmDel) h+='<div class="tile" style="gap:10px"><p>Delete the rating, check-in and attacks for this day?</p><div class="row2"><button class="btn" data-a="delDay:0">Keep</button><button class="btn danger" data-a="delDay:1">Delete</button></div></div>';
   else h+='<button class="btn danger block" data-a="askDel">Delete this day\'s entry</button>';
   return h + dock('calendar');
@@ -769,7 +887,7 @@ function vInsights(){
 
 function vPlan(){
   const p=S.plan, d=NOW().getDate();
-  let h='<header class="head"><div><h1 class="hello">Plan</h1><p class="date">'+esc(p.month)+' · from Claude, '+fmtShort(p.received)+'</p></div></header>';
+  let h='<header class="head"><div><h1 class="hello">Plan</h1><p class="date">'+(p.received?esc(p.month)+' · from Claude, '+fmtShort(p.received):'No plan yet. After a few weeks, send your month to Claude.')+'</p></div></header>';
   h+='<section class="tile coral" style="padding:20px;gap:10px;min-height:170px"><div class="orb" style="width:150px;height:150px;right:-30px;bottom:-60px"></div><span class="label" style="position:relative">'+(d<=3?'Your month is ready':'Monthly review')+'</span><h2 style="position:relative;font-weight:500;font-size:26px;line-height:1.15;letter-spacing:-.02em;max-width:80%">'+(d<=3?'Your month is ready for Claude.':'Send your month to Claude, paste back a plan.')+'</h2><div class="row2" style="position:relative;max-width:340px"><button class="btn dark" data-a="sheet:export">'+ic('arrow','s')+'Export</button><button class="btn" style="background:#FDFBF8;color:#22243B" data-a="sheet:import">Import plan</button></div></section>';
   h+='<section class="tile" style="gap:0"><h2 style="font-weight:400;font-size:22px;margin-bottom:6px">Findings</h2>'+p.findings.map(f=>'<div class="lrow" style="align-items:flex-start;flex-direction:column;gap:8px;padding:12px 0">'+badge(f.level)+'<span>'+esc(f.text)+'</span></div>').join('')+'</section>';
   p.experiments.forEach(e=>{ const n=Object.values(e.done).filter(Boolean).length; const dt=e.done[TODAY()];
@@ -803,14 +921,23 @@ function vPrefs(){
   h+='<section class="tile coral" style="flex-direction:row;gap:12px;align-items:center">'+logo(48)+'<p style="font-size:15px;line-height:21px"><b>Mouch! is a diary, not medical advice.</b> It never suggests a dose. Talk to a doctor about treatment.</p></section>';
   const grp = (title, rows) => '<span class="label" style="padding:14px 4px 0">'+title+'</span><section class="tile" style="gap:0;padding:6px 16px">'+rows+'</section>';
   h+=grp('Day bands', '<div class="lrow"><span>Pain day up to</span>'+stepper(S.bands.pain,'band:pain','pain band')+'</div><div class="lrow"><span>Great day from</span>'+stepper(S.bands.great,'band:great','great band')+'</div>');
-  h+=grp('Notifications', '<div class="lrow"><span>Evening reminder<span class="tiny" style="display:block">"How was today?"</span></span>'+tog(S.reminder.on,'remToggle','Evening reminder')+'</div><div class="lrow"><span>Time</span>'+stepper(fmt12(S.reminder.time),'remTime','reminder time')+'</div><div class="lrow"><span>Try one</span><span class="pills" style="justify-content:flex-end"><button class="pill" data-a="demo:late">Late work</button><button class="pill" data-a="demo:break">Screen break</button><button class="pill" data-a="demo:eve">Evening</button></span></div><p class="tiny" style="padding:4px 0 10px">On iPhone, notifications arrive only when Mouch! is opened from the Home Screen.</p>');
+  const N=S.notify;
+  const slot = (id,label,hint) => '<div class="lrow" style="flex-wrap:wrap"><span>'+label+'<span class="tiny" style="display:block">'+hint+'</span></span><span class="ctrls">'+(N[id]?stepper(fmt12(N[id]),'nT:'+id,label+' time'):'')+tog(!!N[id],'nOn:'+id,label)+'</span></div>';
+  h+=grp('Notifications', '<div class="lrow"><span>Notifications<span class="tiny" style="display:block">'+(N.on?'On. Sent by the server, even when Mouch! is closed.':'Off')+'</span></span>'+tog(N.on,N.on?'pushOff':'pushOn','Notifications')+'</div>'
+    +(N.on?slot('morning','Morning log','"How did you sleep?"')+slot('midday','Midday log','Breakfast, lunch, water')+slot('water','Water','A glass of water')+slot('evening','Evening log','Dinner, coffee, screens')+slot('rating','Rate the day','Only if not rated yet')
+      +'<div class="lrow"><span>Weather warning<span class="tiny" style="display:block">Big pressure change, bad air or strong UV tomorrow</span></span>'+tog(N.weather,'nFlag:weather','Weather warning')+'</div>'
+      +'<div class="lrow"><span>"Did it help?"<span class="tiny" style="display:block">2 hours after a painkiller</span></span>'+tog(N.doses,'nFlag:doses','Did it help')+'</div>'
+      +'<div class="lrow"><span>"Is it over?"<span class="tiny" style="display:block">4 hours into an attack</span></span>'+tog(N.attack,'nFlag:attack','Is it over')+'</div>'
+      +'<div class="lrow"><span>Check it works</span><button class="btn sm" data-a="pushTest">Send a test</button></div>':'<p class="tiny" style="padding:4px 0 10px">Works when Mouch! is opened from the Home Screen (iOS 16.4 or later).</p>'));
+  h+=grp('Day log opens', SECS.map(s=>'<div class="lrow"><span>'+s.name+'</span>'+stepper(fmt12(S.sections[s.id]),'secT:'+s.id,s.name+' opens')+'</div>').join('')+'<p class="tiny" style="padding:4px 0 10px">Each part of the day\'s log unlocks at its time. Today and the 3 days before can be edited.</p>');
+  h+=grp('Passcode', '<div class="lrow"><span>'+(S.lock?'On':'Off')+'<span class="tiny" style="display:block">Hides the diary on this phone. It doesn\'t encrypt it.</span></span><button class="btn sm" data-a="passChange">'+(S.lock?'Change':'Create')+'</button></div>'+(S.lock?'<div class="lrow"><span>Lock now</span><button class="btn sm" data-a="lockNow">Lock</button></div>':''));
+  h+=grp('Apple Health', '<div class="lrow"><span>'+(S.health.token?'Connected':'Not connected')+'<span class="tiny" style="display:block">'+(S.health.last?'Last data '+fmtShort(S.health.last.slice(0,10))+', '+fmt12(hm(new Date(S.health.last))):'Sleep, steps, exercise, heart rate and cycle via an iPhone Shortcut')+'</span></span><button class="btn sm" data-a="sheet:health">'+(S.health.token?'Open':'Set up')+'</button></div>');
   h+=grp('Screen &amp; late work', '<div class="lrow"><span>Tell me when I\'m still working</span>'+tog(sc.lateOn,'sc:lateOn','Late work notification')+'</div><div class="lrow"><span>After</span>'+stepper(fmt12(sc.lateAfter),'scLate','late-work time')+'</div><div class="lrow"><span>Workdays only<span class="tiny" style="display:block">Last workday: '+esc(S.weather.lastWorkday)+'</span></span>'+tog(sc.workdaysOnly,'sc:workdaysOnly','Workdays only')+'</div><div class="lrow"><span>Screen-break reminder</span>'+tog(sc.breakOn,'sc:breakOn','Screen break reminder')+'</div><div class="lrow"><span>After unbroken</span>'+stepper(Math.floor(sc.breakAfter/60)+' h '+pad(sc.breakAfter%60),'scBreak','break interval')+'</div><div class="lrow"><span>Heavy screen day from</span>'+stepper(sc.heavyFrom+' h','scHeavy','heavy day')+'</div>'
-    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('laptop')+'<span>Mac<span class="tiny" style="display:block">'+(sc.mac.on?'Connected · synced '+fmt12(sc.mac.synced):'Not connected')+'</span></span></span><button class="btn sm" data-a="'+(sc.mac.on?'disc:mac':'sheet:connect:mac')+'">'+(sc.mac.on?'Disconnect':'Connect')+'</button></div>'
-    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('screen')+'<span>Windows PC<span class="tiny" style="display:block">'+(sc.pc.on?'Connected':'Not connected')+'</span></span></span><button class="btn sm" data-a="'+(sc.pc.on?'disc:pc':'sheet:connect:pc')+'">'+(sc.pc.on?'Disconnect':'Connect')+'</button></div>'
-    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('phone')+'<span>This phone<span class="tiny" style="display:block">Asked in the check-in. iPhone doesn\'t let web apps read Screen Time.</span></span></span></div><p class="tiny" style="padding:4px 0 10px">Only daily totals, session lengths and the last active time leave your computer. No app names or window titles.</p>');
+    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('phone')+'<span>This phone<span class="tiny" style="display:block">Asked in the evening log. iPhone doesn\'t let any app read Screen Time.</span></span></span></div>'
+    +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('laptop')+'<span>Mac or PC<span class="tiny" style="display:block">Needs a desktop helper app. Not built yet.</span></span></span></div>');
   h+=grp('Medications', S.meds.map(m=>'<div class="lrow"><span>'+esc(m.name)+'<span class="tiny" style="display:block">'+(m.note?esc(m.note)+' · ':'')+(m.cls==='triptan'?'Triptan-type':m.nsaid?'NSAID':'Simple painkiller')+'</span></span><button class="pill'+(m.active?' on':'')+'" data-a="medToggle:'+m.id+'">'+(m.active?'Active':'Hidden')+'</button></div>').join('')+'<div class="lrow" style="flex-wrap:wrap"><input class="inp" id="newMed" placeholder="Medication name" value="'+esc(V.newMed)+'" data-in="newMed"><div class="seg" style="flex:1 1 100%">'+[['nsaid','NSAID'],['simple','Simple'],['triptan','Triptan']].map(o=>'<button class="'+(V.newMedCls===o[0]?'on':'')+'" data-a="medCls:'+o[0]+'">'+o[1]+'</button>').join('')+'</div><button class="btn sm dark" data-a="medAdd" style="flex:1 1 100%">Add medication</button></div>');
   h+=grp('Tags', '<p class="tiny" style="padding-top:12px">'+allTags().length+' built-in tags are always in the check-in. Your own:</p><div class="pills" style="padding:10px 0">'+(S.tags.length?'':'<span class="small">None yet</span>')+S.tags.map((t,i)=>'<button class="chip" data-a="tagDel:'+i+'" aria-label="Remove tag '+esc(t)+'">'+esc(t)+ic('close','s')+'</button>').join('')+'</div><div class="lrow"><input class="inp" id="newTag" placeholder="New tag" value="'+esc(V.newTag)+'" data-in="newTag"><button class="btn sm dark" data-a="tagAdd">Add</button></div>');
-  h+=grp('Weather', '<div class="lrow"><span>Location</span><span>'+esc(S.weather.loc)+' · '+S.weather.lat+', '+S.weather.lon+'</span></div><div class="lrow"><span>Big pressure change</span>'+stepper(S.weather.threshold+' hPa','thresh','threshold')+'</div><div class="lrow"><span>Last workday</span>'+seg([['Thu','Thu'],['Fri','Fri'],['Sat','Sat']],S.weather.lastWorkday,'lastWd')+'</div>');
+  h+=grp('Weather', '<div class="lrow"><span>Location</span><span>'+esc(S.weather.loc)+' · '+S.weather.lat+', '+S.weather.lon+'</span></div><div class="lrow"><span>Live data<span class="tiny" style="display:block">'+(S.weather.at?'Open-Meteo · updated '+fmt12(hm(new Date(S.weather.at))):'Not fetched yet. Needs internet.')+'</span></span><button class="btn sm" data-a="wxNow">Update</button></div><div class="lrow"><span>Big pressure change</span>'+stepper(S.weather.threshold+' hPa','thresh','threshold')+'</div><div class="lrow"><span>Last workday</span>'+seg([['Thu','Thu'],['Fri','Fri'],['Sat','Sat']],S.weather.lastWorkday,'lastWd')+'</div>');
   h+=grp('Theme', '<div style="padding:10px 0">'+seg([['dark','Dark'],['light','Light'],['system','System']],S.theme,'theme')+'</div><div class="lrow"><span>Dark from 8 PM to 6 AM<span class="tiny" style="display:block">When the theme is set to System</span></span>'+tog(S.nightDark,'nightDark','Dark at night')+'</div>');
   h+=grp('Your data', '<div class="lrow"><span>Export everything (JSON)</span><button class="btn sm" data-a="sheet:export">Export</button></div>'+(S.sample?'<div class="lrow"><span>Sample month loaded<span class="tiny" style="display:block">The ratings and attacks you see are examples.</span></span><button class="btn sm" data-a="clearSample">Clear</button></div>':'')+'<div class="lrow"><span>Sync</span><span class="small">Off</span></div><div style="display:flex;flex-direction:column;gap:8px;padding:12px 0"><label for="delbox" class="small">Delete all data — type DELETE</label><div class="row2"><input class="inp" id="delbox" data-in="delTyped" value="'+esc(V.delTyped)+'" autocomplete="off"><button class="btn danger" data-a="wipe" '+(V.delTyped==='DELETE'?'':'disabled style="opacity:.4"')+'>Delete</button></div></div>');
   h+='<p class="tiny" style="text-align:center;padding:14px 0"><span class="wordmark" style="font-size:16px;color:var(--ink)">Mouch<i>!</i></span> · v1.0 · no analytics, no ads · Mouch it out!</p>';
@@ -835,22 +962,28 @@ const Q = [
   {id:'alcohol', q:'Any alcohol yesterday?', type:'one', opts:[['no','No'],['yes','Yes']]},
   {id:'signs', q:'In the last two days, did you notice any of these?', hint:'Early-warning signs. Pick all that fit.', type:'multi', opts:SIGNS, none:'None of these'},
   {id:'tags', q:'Anything going on?', hint:'Pick all that fit, or add your own.', type:'tags', none:'Nothing special'},
-  {id:'note', q:'Anything else worth remembering?', hint:'Optional.', type:'note'}
+  {id:'note', q:'Anything else worth remembering?', hint:'Optional.', type:'note'},
+  {id:'woke', q:'How did you wake up?', type:'one', opts:[['fresh','Refreshed'],['ok','OK'],['tired','Tired'],['headache','With a headache']]},
+  {id:'waterMid', q:'Water so far today?', type:'one', opts:[['good','A good amount'],['some','Some'],['low','Barely any']]},
+  {id:'rate', q:'How was today, 1 to 10?', hint:'Tap a number to see what it means.', type:'rate'}
 ];
+const QB = Object.fromEntries(Q.map(q=>[q.id,q]));
 function ciAns(){ const d=day(V.ci.k); d.ci=d.ci||{signs:[],tags:[]}; return d.ci; }
 function vCheckin(){
-  const qi=V.ci.i, d=day(V.ci.k), a=ciAns();
-  const ctx = (band(d.rating)==='pain'?'Pain day':band(d.rating)==='great'?'Great day':'Day')+' · rated '+(d.rating||'—');
-  if(qi>=Q.length) return vCiEnd(ctx);
-  const q=Q[qi], total=Q.length;
+  const qi=V.ci.i, d=day(V.ci.k), a=ciAns(), qs=V.ci.qs;
+  const ctx = (V.ci.secs.length===1 ? SECS.find(s=>s.id===V.ci.secs[0]).name+' log' : 'Day log')+' · '+(V.ci.k===TODAY()?'today':fmtShort(V.ci.k))+(d.rating?' · rated '+d.rating:'');
+  if(qi>=qs.length) return vCiEnd(ctx);
+  const q=QB[qs[qi]], total=qs.length;
   let body='';
+  if(q.type==='rate') body='<div style="display:flex;flex-direction:column;gap:14px">'+rateCtl(V.ci.k)+'</div>';
   if(q.type==='one') body='<div class="ci-ans" style="flex-direction:column">'+q.opts.map(o=>'<button class="cpill wide'+(a[q.id]===o[0]?' on':'')+'" data-a="ans:'+q.id+':'+o[0]+'">'+esc(o[1])+(o[2]?'<small>'+esc(o[2])+'</small>':'')+'</button>').join('')+'</div>';
   if(q.type==='s5'||q.type==='s6'){ const n=q.type==='s5'?5:6, base=q.type==='s5'?1:0; let b=''; for(let i=0;i<n;i++){ const v=base+i; b+='<button class="csq'+(n===6?' six':'')+(a[q.id]===v?' on':'')+'" data-a="ansN:'+q.id+':'+v+'">'+(n===6&&i===5?'5+':v)+'</button>'; } body='<div class="ci-ans" style="flex-wrap:nowrap;gap:10px">'+b+'</div>'+(q.ends?'<div class="ends" style="color:#C2C2D6;margin-top:10px"><span>1 · '+q.ends[0]+'</span><span>'+q.ends[1]+' · 5</span></div>':''); if(q.id==='stressY'&&a.stressY!=null) body+='<p class="small" style="text-align:center;margin-top:12px">From yesterday\'s check-in. Tap to change, or go on.</p>'; }
   if(q.type==='sleep'){ const s=a.sleep||null, diff=s&&s.usual===false;
-    body='<div class="ci-ans" style="flex-direction:column"><button class="cpill wide'+(s&&s.usual?' on':'')+'" data-a="sleepUsual">My usual hours<small>11:00 PM → 7:00 AM</small></button><button class="cpill wide'+(diff?' on':'')+'" data-a="sleepDiff">Different times</button></div>';
+    const hh=d.health&&d.health.sleepFrom?d.health:null;
+    body='<div class="ci-ans" style="flex-direction:column">'+(hh?'<button class="cpill wide'+(diff&&s.bed===hh.sleepFrom&&s.wake===hh.sleepTo?' on':'')+'" data-a="sleepHealth">From Apple Health<small>'+fmt12(hh.sleepFrom)+' → '+fmt12(hh.sleepTo)+'</small></button>':'')+'<button class="cpill wide'+(s&&s.usual?' on':'')+'" data-a="sleepUsual">My usual hours<small>11:00 PM → 7:00 AM</small></button><button class="cpill wide'+(diff&&!(hh&&s.bed===hh.sleepFrom&&s.wake===hh.sleepTo)?' on':'')+'" data-a="sleepDiff">Different times</button></div>';
     if(diff) body+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:16px"><div class="lrow" style="border-color:#3A3C5A"><span>To bed</span>'+stepper(fmt12(s.bed),'sleepT:bed','bed time')+'</div><div class="lrow" style="border-color:#3A3C5A"><span>Woke up</span>'+stepper(fmt12(s.wake),'sleepT:wake','wake time')+'</div><p class="small" style="text-align:center">'+sleepH(s).toFixed(1).replace('.0','')+' h — '+(8-sleepH(s)>0?(8-sleepH(s)).toFixed(1).replace('.0','')+' h less than usual':'about usual')+'</p></div>'; }
   if(q.type==='screen'){ const dd=day(V.ci.k);
-    body=(S.screen.mac.on&&dd.mac?'<p class="small" style="text-align:center;margin:-10px 0 18px">Your Mac logged <b style="color:#F6F4F0">'+hhmm(dd.mac)+'</b> today, last active '+fmt12(dd.lastActive)+'.</p>':'')+'<div class="ci-ans">'+q.opts.map(o=>'<button class="cpill'+(a.screen===o[0]?' on':'')+'" style="min-width:120px" data-a="ansStay:screen:'+o[0]+'">'+o[1]+(o[0]==='yes'&&!a.screen&&dd.mac>=S.screen.heavyFrom*60?'<small>suggested</small>':'')+'</button>').join('')+'</div><p class="small" style="text-align:center;margin:22px 0 10px">And your phone, roughly?</p>'+seg([['<1','< 1 h'],['1-3','1–3 h'],['3-5','3–5 h'],['5+','5 h +']],a.phone,'ansPhone'); }
+    body=(S.screen.mac.on&&dd.mac?'<p class="small" style="text-align:center;margin:-10px 0 18px">Your Mac logged <b style="color:#F6F4F0">'+hhmm(dd.mac)+'</b> today, last active '+fmt12(dd.lastActive)+'.</p>':'')+'<div class="ci-ans">'+q.opts.map(o=>'<button class="cpill'+(a.screen===o[0]?' on':'')+'" style="min-width:120px" data-a="ansStay:screen:'+o[0]+'">'+o[1]+(o[0]==='yes'&&!a.screen&&dd.mac>=S.screen.heavyFrom*60?'<small>suggested</small>':'')+'</button>').join('')+'</div><p class="small" style="text-align:center;margin:22px 0 10px">Phone screen time today?</p>'+seg([['<1','< 1 h'],['1-3','1–3'],['3-5','3–5'],['5-7','5–7'],['7+','7 h +']],a.phone,'ansPhone')+'<p class="tiny" style="text-align:center;margin-top:10px;color:#C2C2D6">On iPhone: Settings → Screen Time shows today\'s total. Web apps can\'t read it, so it\'s asked here.</p>'; }
   if(q.type==='multi'||q.type==='tags'){ const cur=a[q.id]||[];
     const chipB=o=>'<button class="cpill row'+(q.type==='tags'?' sm':'')+(cur.includes(o)?' on':'')+'" data-a="ansM:'+q.id+':'+encodeURIComponent(o)+'">'+(cur.includes(o)?ic('check','s'):'')+esc(o)+'</button>';
     if(q.type==='multi') body='<div class="ci-ans">'+q.opts.map(chipB).join('')+'</div>';
@@ -882,11 +1015,17 @@ function vCheckin(){
 function vCiEnd(ctx){
   const d=day(V.ci.k), b=band(d.rating), hasAtk=S.attacks.some(a=>a.date===V.ci.k);
   let h='<div class="full ci" role="dialog" aria-label="Check-in finished"><div class="full-in">';
+  const last = V.ci.secs[V.ci.secs.length-1], nxt = SECS[SECS.findIndex(s=>s.id===last)+1];
+  if(V.ci.k===TODAY() && nxt && last!=='evening'){
+    const st=secState(nxt.id, V.ci.k);
+    h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;position:relative"><div class="orb" style="width:160px;height:160px;right:-20px;top:40px;opacity:.9"></div><span style="position:relative">'+logo(48)+'</span><h1 style="font-weight:400;font-size:52px;letter-spacing:-.04em;line-height:1;position:relative">'+SECS.find(s=>s.id===last).name+' saved.</h1><p style="font-size:20px;line-height:1.4;color:#C2C2D6;max-width:340px;position:relative">'+(st==='locked'?'The '+nxt.name.toLowerCase()+' log opens at '+fmt12(S.sections[nxt.id])+'.'+(S.notify.on?' Mouch! will remind you.':''):'The '+nxt.name.toLowerCase()+' log is open whenever you are.')+'</p></div><button class="btn block coral" data-a="ciDone">Done</button>';
+    return h+'</div></div>';
+  }
   if(b==='pain' && !hasAtk && !V.ci.askedAtk){
     h+='<div class="ci-top"><span></span><span class="ctx">'+esc(ctx)+'</span><span></span></div><div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:30px"><h1 class="ci-q">Did you have a migraine attack today?</h1><div class="ci-ans" style="flex-direction:column"><button class="cpill wide" data-a="ciAtk:1">Yes, log it<small>Start and end time, pain, medication</small></button><button class="cpill wide" data-a="ciAtk:0">No, just a bad day</button></div></div>';
   } else {
     const fc=forecast();
-    h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;position:relative"><div class="orb" style="width:160px;height:160px;right:-20px;top:40px;opacity:.9"></div><span style="position:relative">'+logo(48)+'</span><h1 style="font-weight:400;font-size:52px;letter-spacing:-.04em;line-height:1;position:relative">All saved.</h1><p style="font-size:20px;line-height:1.4;color:#C2C2D6;max-width:340px;position:relative">'+(b==='great'?'Great days are the comparison the analysis needs most. Thank you.':'Thanks for logging a hard day. Rest now; the rest can wait.')+'</p><div class="tile" style="background:#3A3C5A;color:#F6F4F0;position:relative"><span class="tiny" style="color:#C2C2D6">Risk '+fc.target+'</span><span style="font-size:28px;font-weight:500">'+fc.level+' · '+fc.score+'</span><span class="tiny" style="color:#C2C2D6">'+esc(advice(fc)[0].title)+'</span></div></div><button class="btn block coral" data-a="ciDone">Done</button>';
+    h+='<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;position:relative"><div class="orb" style="width:160px;height:160px;right:-20px;top:40px;opacity:.9"></div><span style="position:relative">'+logo(48)+'</span><h1 style="font-weight:400;font-size:52px;letter-spacing:-.04em;line-height:1;position:relative">All saved.</h1><p style="font-size:20px;line-height:1.4;color:#C2C2D6;max-width:340px;position:relative">'+(b==='great'?'Great days are the comparison the analysis needs most. Thank you.':b==='pain'?'Thanks for logging a hard day. Rest now; the rest can wait.':'Every logged day makes your patterns clearer. Thank you.')+'</p><div class="tile" style="background:#3A3C5A;color:#F6F4F0;position:relative"><span class="tiny" style="color:#C2C2D6">Risk '+fc.target+'</span><span style="font-size:28px;font-weight:500">'+fc.level+' · '+fc.score+'</span><span class="tiny" style="color:#C2C2D6">'+esc(advice(fc)[0].title)+'</span></div></div><button class="btn block coral" data-a="ciDone">Done</button>';
   }
   return h+'</div></div>';
 }
@@ -909,7 +1048,9 @@ function vAttack(){
   const a=S.attacks.find(x=>x.id===V.atk); if(!a){ V.view='today'; return vToday(); }
   const live=!a.done, chip=(on,act,label)=>'<button class="chip'+(on?' on':'')+'" data-a="'+act+'">'+(on?ic('check','s'):'')+esc(label)+'</button>';
   let h='<div class="full atk" role="dialog" aria-label="Attack"><div class="full-in" style="gap:22px">';
+  const ro = !live && !editable(a.date);
   h+='<div style="display:flex;justify-content:space-between;align-items:center"><span class="label">'+(live?'Attack · in progress':'Attack · '+fmtShort(a.date))+'</span><button class="btn sm" data-a="atkClose">Close</button></div>';
+  if(ro) h+='<div class="lock-note" style="background:#17182B;color:#9C9AB0">'+ic('no','s')+'<span>Older than 3 days, so this attack is read-only.</span></div><div class="ro" style="display:flex;flex-direction:column;gap:22px">';
   if(live){
     h+='<div><p class="small">Started '+fmt12(a.start)+'</p><p class="timer num" id="timer">'+elapsed(a)+'</p></div>';
   } else {
@@ -925,6 +1066,7 @@ function vAttack(){
     h+='<div style="display:flex;flex-direction:column;gap:10px"><span class="label">Lost time</span><div class="pills">'+[['pushed','Pushed through'],['bit','A bit'],['half','Half day'],['full','Full day']].map(o=>chip(a.lost===o[0],'lost:'+o[0],o[1])).join('')+'</div></div>';
   }
   h+='<div class="card" style="padding:6px 14px"><button class="lrow" style="width:100%;border:0" data-a="unusual" aria-expanded="'+V.expandUnusual+'"><span>Unusual symptoms?</span>'+ic(V.expandUnusual?'minus':'plus','s')+'</button>'+(V.expandUnusual?'<div>'+UNUSUAL.map((u,i)=>'<button class="cb" data-a="flag:'+i+'"><i></i><span>'+esc(u)+'</span></button>').join('')+'</div>':'')+'</div>';
+  if(ro) return h+'</div><div class="row2" style="padding:12px 0 6px"><button class="btn" data-a="atkClose">Close</button></div></div></div>';
   if(!live) h+='<button class="btn block" style="color:#C98A84" data-a="atkDelete">Delete attack</button>';
   h+='<div class="row2" style="position:sticky;bottom:0;padding:12px 0 6px;background:#0F1020">'+(live?'<button class="btn" data-a="atkClose">Close</button><button class="btn dark" data-a="atkOver">It\'s over</button>':'<button class="btn dark" data-a="atkDone">Done</button>')+'</div>';
   return h+'</div></div>';
@@ -936,11 +1078,12 @@ function vFlag(){
 /* ---------- onboarding ---------- */
 function vOnboard(){
   const steps=[
-    ['Every evening','Rate your day from 1 to 10. One tap, about three seconds.'],
-    ['Bad days and great days','A short check-in, one question per screen. Great days matter as much as bad ones.'],
+    ['Through the day','Morning, midday and evening logs open as the day goes. A minute each, one question per screen.'],
+    ['Every evening','Rate your day from 1 to 10. Tap a number and Mouch! tells you what it means before saving.'],
     ['When pain starts','Tap Ouch! The time is saved and the screen goes dim.'],
     ['Once a month','Send your month to Claude, paste back a plan with findings, experiments and food rules.']];
   const i=V.ob;
+  if(i===5) return vSetLock();
   let h='<div class="full ob" role="dialog" aria-label="Welcome"><div class="full-in" style="justify-content:space-between;gap:20px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;align-items:center;gap:10px">'+logo(36)+'<span class="wordmark" style="font-size:24px">Mouch<i>!</i></span></span><button class="ci-later" data-a="obSkip">Skip</button></div>';
   if(i===0){
@@ -949,9 +1092,38 @@ function vOnboard(){
   } else {
     const s=steps[i-1];
     h+='<div style="display:flex;flex-direction:column;align-items:center;gap:26px;padding-top:30px"><div class="ring" style="width:150px;height:150px">'+ringSvg(150,i/4,'#3A3C5A','#FF786E',9)+'<span style="font-size:44px" class="num">'+i+'</span></div><h1 class="ci-q">'+s[0]+'</h1><p class="small" style="text-align:center;font-size:18px;line-height:1.5;max-width:320px">'+s[1]+'</p></div>';
-    if(i===4) h+='<div class="tile" style="background:#3A3C5A;color:#F6F4F0;gap:6px"><b>This app is a diary, not medical advice.</b><span class="small">It never suggests a dose. On iPhone, tap Share → Add to Home Screen so the 9 PM reminder can reach you.</span></div>';
+    if(i===4) h+='<div class="tile" style="background:#3A3C5A;color:#F6F4F0;gap:6px"><b>This app is a diary, not medical advice.</b><span class="small">It never suggests a dose. Next: a passcode, so only you can open it.</span></div>';
   }
-  h+='<div class="ci-foot"><div class="dots">'+[0,1,2,3,4].map(x=>'<i class="'+(x===i?'on':'')+'"></i>').join('')+'</div><button class="arrow'+(i===4?' fill':'')+'" data-a="obNext">'+(i===4?'Start':ic('arrow'))+'</button></div>';
+  h+='<div class="ci-foot"><div class="dots">'+[0,1,2,3,4,5].map(x=>'<i class="'+(x===i?'on':'')+'"></i>').join('')+'</div><button class="arrow" data-a="obNext">'+ic('arrow')+'</button></div>';
+  return h+'</div></div>';
+}
+
+/* ---------- passcode ---------- */
+const b64 = u8 => btoa(String.fromCharCode(...u8));
+const unb64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+async function hashPass(p, salt, it){
+  const k=await crypto.subtle.importKey('raw', new TextEncoder().encode(p), 'PBKDF2', false, ['deriveBits']);
+  return b64(new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2', hash:'SHA-256', salt, iterations:it}, k, 256)));
+}
+async function setPass(p){ const salt=crypto.getRandomValues(new Uint8Array(16)), it=150000; S.lock={salt:b64(salt), it, hash:await hashPass(p,salt,it)}; save(); }
+async function checkPass(p){ return !!S.lock && await hashPass(p, unb64(S.lock.salt), S.lock.it) === S.lock.hash; }
+const passIn = (id, label, focus) => '<label for="'+id+'" class="small">'+label+'</label><input type="password" id="'+id+'" data-in="'+id+'" value="'+esc(V[id])+'" autocomplete="'+(id==='passIn'?'current-password':'new-password')+'" autocapitalize="off" autocorrect="off" spellcheck="false"'+(focus?' data-focus="1"':'')+'>';
+function vSetLock(){
+  const fromPrefs = V.view==='setlock' && S.onboarded && S.lock;
+  let h='<div class="full ob" role="dialog" aria-label="Create a passcode"><div class="full-in" style="justify-content:space-between;gap:20px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;align-items:center;gap:10px">'+logo(36)+'<span class="wordmark" style="font-size:24px">Mouch<i>!</i></span></span>'+(fromPrefs?'<button class="ci-later" data-a="go:prefs">Cancel</button>':'')+'</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:14px"><h1 class="ci-q">'+(fromPrefs?'Change your passcode':'Create a passcode')+'</h1><p class="small" style="text-align:center;font-size:17px;line-height:1.5">Mouch! asks for it every time you open it, and after 5 minutes away. Any letters or numbers. It can\'t be recovered, so pick one you\'ll remember.</p>'
+    +'<div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">'+passIn('pass1','Passcode',true)+passIn('pass2','Type it again')+'<p class="err" role="alert">'+esc(V.passErr)+'</p></div></div>';
+  h+='<button class="btn block coral" data-a="passSave">Save passcode</button>';
+  return h+'</div></div>';
+}
+function vLock(){
+  let h='<div class="full ob" role="dialog" aria-label="Mouch! is locked"><div class="full-in" style="justify-content:center;gap:22px">';
+  if(V.forgot){
+    h+='<h1 class="ci-q">Forgot your passcode?</h1><p class="small" style="text-align:center;font-size:17px;line-height:1.5">It can\'t be recovered. You can erase everything on this phone and start over.</p><label for="delbox" class="small">Type DELETE to erase all data</label><input type="text" id="delbox" data-in="delTyped" value="'+esc(V.delTyped)+'" autocomplete="off" autocapitalize="characters" style="min-height:56px;border-radius:999px;border:0;background:#3A3C5A;color:#F6F4F0;padding:0 20px;font-size:17px"><div class="row2"><button class="btn" style="background:#3A3C5A;color:#F6F4F0" data-a="forgot:0">Back</button><button class="btn coral" data-a="wipe" '+(V.delTyped==='DELETE'?'':'disabled style="opacity:.4"')+'>Erase</button></div>';
+  } else {
+    h+='<div style="display:grid;place-items:center">'+logo(84)+'</div><h1 class="ci-q">Hi'+(S.name?', '+esc(S.name):'')+'</h1><div style="display:flex;flex-direction:column;gap:10px">'+passIn('passIn','Passcode',true)+'<p class="err" role="alert">'+esc(V.passErr)+'</p></div><button class="btn block coral" data-a="unlock">Unlock</button><button class="ci-later" style="align-self:center;color:#C2C2D6" data-a="forgot:1">Forgot passcode?</button>';
+  }
   return h+'</div></div>';
 }
 
@@ -981,6 +1153,15 @@ function vSheet(){
        : row('warn','spark','Not sure yet which works better','Answer "did it help?" after each dose. Once each has 3 rated doses, Mouch! compares them.');
     if(S.live || fc.level==='High' || fc.level==='Elevated') h+= row('warn','next', S.live?'Attack in progress':'Risk is '+fc.level.toLowerCase(),'Painkillers usually work better taken early, when the pain starts, than after waiting it out.');
     h+='</div><div class="row2">'+S.meds.filter(m=>m.active).map(m=>'<button class="btn '+(best&&best.name===m.name?'coral':'dark')+'" data-a="logMed:'+m.id+'">'+ic('plus','s')+'Log '+esc(m.name)+'</button>').join('')+'</div><p class="tiny">Mouch! is a diary, not medical advice, and never suggests a dose. Follow the leaflet, your pharmacist or your doctor.</p>'; }
+  if(s.type==='wx'){ const row=(k,label)=>{ const w=wxFor(k); return '<div class="tile" style="gap:8px'+(w&&(w.aqi>100||w.uv>=8||Math.abs(w.dp||0)>=S.weather.threshold)?';background:var(--warn-bg)':'')+'"><span class="label">'+label+'</span>'+(w?'<div class="bento" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">'+[[(w.dp>0?'+':'')+(w.dp??'—')+' hPa','pressure vs day before'],[w.aqi??'—','air (US AQI) · '+(w.aqi!=null?aqiWord(w.aqi):'')],[w.uv!=null?Math.round(w.uv):'—','UV max'],[(w.tmax!=null?Math.round(w.tmax)+'°C':'—')+' · '+(w.hum??'—')+'%','max temp · humidity']].map(x=>'<div><b class="num" style="font-size:24px;font-weight:500;display:block">'+x[0]+'</b><span class="tiny">'+x[1]+'</span></div>').join('')+'</div>':'<p class="small">No data yet.</p>')+'</div>'; };
+    h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Conditions · '+esc(S.weather.loc)+'</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div>'+row(TODAY(),'Today')+row(key(addDays(NOW(),1)),'Tomorrow')+'<p class="tiny">From Open-Meteo'+(S.weather.at?', updated '+fmt12(hm(new Date(S.weather.at))):'')+'. Amber means a pressure change of '+S.weather.threshold+' hPa or more, air quality over 100, or UV 8+.</p>'; }
+  if(s.type==='health'){ const t=S.health.token;
+    h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Apple Health</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div><p class="small">Web apps can\'t open Apple Health, but the Shortcuts app on your iPhone can. It reads Health and sends the numbers here. They wait in a private inbox until Mouch! opens, then the server deletes them.</p>';
+    if(!t) h+='<button class="btn dark block" data-a="healthOn">Connect Apple Health</button>';
+    else {
+      h+='<div class="tile" style="gap:8px"><span class="label">Your connection</span><span class="tiny">Address</span><div class="copyrow"><code>'+esc(location.origin)+'/api/health</code><button class="btn sm" data-a="copy:addr">Copy</button></div><span class="tiny">Pairing code (the header value)</span><div class="copyrow"><code>Bearer '+esc(t)+'</code><button class="btn sm" data-a="copy:token">Copy</button></div><p class="tiny">Keep the pairing code private. Anyone with it can send numbers into your diary.</p><div class="row2"><button class="btn sm" data-a="healthPull">Check for data now</button><button class="btn sm danger" data-a="healthOff">Disconnect</button></div><p class="tiny">'+(S.health.last?'Last data: '+fmtShort(S.health.last.slice(0,10))+', '+fmt12(hm(new Date(S.health.last))):'No data received yet.')+'</p></div>';
+      h+='<div class="tile" style="gap:10px"><span class="label">Build the Shortcut (once, about 5 minutes)</span><p class="small">Open Shortcuts → tap + → add these actions in order. Search each action by name.</p><ol class="steps">'+HSTEPS.map(x=>'<li><b>'+x[0]+'</b>'+x.slice(1).map(p=>'<p class="small">'+p+'</p>').join('')+'</li>').join('')+'</ol></div>';
+    } }
   if(s.type==='connect'){ const code=s.code;
     h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Connect a '+(s.dev==='mac'?'Mac':'Windows PC')+'</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div><p>1. On the computer, install Mouch! Helper from <b>[HELPER DOWNLOAD URL]</b>.</p><p>2. Open it from the '+(s.dev==='mac'?'menu bar':'system tray')+' and type this code:</p><div class="tile lav" style="align-items:center"><span class="num" style="font-size:44px;font-weight:500;letter-spacing:.12em">'+code+'</span><span class="tiny">Valid for 10 minutes</span></div><p class="small">The helper only reads when the screen was in use and when you were last active. It sends daily totals to this diary and nothing else.</p><button class="btn dark block" data-a="paired:'+s.dev+'">I\'ve entered the code</button>'; }
   return h+'</div></div>';
@@ -991,7 +1172,149 @@ function notify(title, body, actions){
   n.innerHTML='<div class="nh"><span class="appi">'+logo(22)+'</span><b style="color:#F6F4F0">Mouch!</b><span style="margin-left:auto">now</span></div><p><b>'+esc(title)+'</b> '+esc(body)+'</p>'+(actions?'<div class="na">'+actions.map(a=>'<button data-a="notifX">'+esc(a)+'</button>').join('')+'</div>':'');
   L.querySelectorAll('.notif').forEach(x=>x.remove()); L.appendChild(n); clearTimeout(notifTimer); notifTimer=setTimeout(()=>n.remove(), 7000);
 }
-function toast(t){ const L=$('#layer'); L.querySelectorAll('.toast').forEach(x=>x.remove()); const n=document.createElement('div'); n.className='toast'; n.innerHTML=ic('check','s')+esc(t); L.appendChild(n); setTimeout(()=>n.remove(),2200); }
+function toast(t){ const L=$('#layer'); L.querySelectorAll('.toast').forEach(x=>x.remove()); const n=document.createElement('div'); n.className='toast'; n.innerHTML=ic('check','s')+esc(t); L.appendChild(n); setTimeout(()=>n.remove(),2600); }
+/* redraw only screens without a text field in use */
+const softRender = () => { if(!V.locked && ['today','forecast','prefs','day','calendar','insights'].includes(V.view) && !(V.sheet&&V.sheet.type==='import')) render(); };
+
+/* ---------- live weather: Open-Meteo, no key ---------- */
+let wxBusy=false;
+async function fetchWx(force){
+  const w=S.weather;
+  if(wxBusy || navigator.onLine===false || (!force && w.at && Date.now()-Date.parse(w.at)<3600e3)) return;
+  wxBusy=true;
+  try{
+    const q='latitude='+w.lat+'&longitude='+w.lon+'&timezone=auto&past_days=3&forecast_days=2';
+    const [f,a]=await Promise.all([
+      fetch('https://api.open-meteo.com/v1/forecast?'+q+'&hourly=surface_pressure,relative_humidity_2m&daily=temperature_2m_max,uv_index_max').then(r=>r.json()),
+      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?'+q+'&hourly=us_aqi,pm2_5').then(r=>r.json()).catch(()=>null)]);
+    const days={}, at=k=>days[k]||(days[k]={});
+    const mean=xs=>xs.reduce((s,x)=>s+x,0)/xs.length;
+    const byDay=(times, vals, fn)=>{ const g={}; (times||[]).forEach((t,i)=>{ if(vals[i]!=null) (g[t.slice(0,10)]=g[t.slice(0,10)]||[]).push(vals[i]); }); Object.keys(g).forEach(k=>fn(k,g[k])); };
+    byDay(f.hourly.time, f.hourly.surface_pressure, (k,xs)=>{ at(k).p=+mean(xs).toFixed(1); });
+    byDay(f.hourly.time, f.hourly.relative_humidity_2m, (k,xs)=>{ at(k).hum=Math.round(mean(xs)); });
+    f.daily.time.forEach((k,i)=>{ at(k).tmax=f.daily.temperature_2m_max[i]; at(k).uv=f.daily.uv_index_max[i]; });
+    if(a&&a.hourly){ byDay(a.hourly.time, a.hourly.us_aqi, (k,xs)=>{ at(k).aqi=Math.round(Math.max(...xs)); }); byDay(a.hourly.time, a.hourly.pm2_5, (k,xs)=>{ at(k).pm=Math.round(mean(xs)); }); }
+    const ks=Object.keys(days).sort();
+    ks.forEach((k,i)=>{ const p=i&&days[ks[i-1]].p; if(p!=null&&days[k].p!=null) days[k].dp=+(days[k].p-p).toFixed(1); });
+    const tk=TODAY(), tm=key(addDays(NOW(),1));
+    w.days=days; w.at=new Date().toISOString();
+    if(days[tk]&&days[tk].dp!=null) w.today=days[tk].dp;
+    if(days[tm]&&days[tm].dp!=null) w.tomorrow=days[tm].dp;
+    // keep each logged day's own conditions for the analysis and the monthly export
+    ks.filter(k=>k<=tk&&S.days[k]).forEach(k=>{ const x=days[k]; if(x.dp!=null) S.days[k].press=x.dp; S.days[k].wx={aqi:x.aqi, pm:x.pm, uv:x.uv, tmax:x.tmax, hum:x.hum}; });
+    save(); softRender();
+  }catch(e){}finally{ wxBusy=false; }
+}
+
+/* ---------- Apple Health: an iPhone Shortcut posts to /api/health, Mouch! pulls on open ---------- */
+const HSTEPS = [
+  ['Last night\'s sleep','Add “Find Health Samples”. Type: Sleep Analysis. Add Filter: Start Date · is in the last · 1 day. Sort by Start Date, Oldest First.','Add “Get Item from List” → First Item. Then “Get Details of Health Sample” → Start Date. Tap the result and rename it Bed.','Add “Get Item from List” → Last Item (from the samples in step 1). Then “Get Details of Health Sample” → End Date. Rename it Wake.'],
+  ['Steps and exercise','Add “Find Health Samples”. Type: Steps. Filter: Start Date · is today. Then “Calculate Statistics” → Sum. Rename it Steps.','Add “Find Health Samples”. Type: Exercise Minutes. Filter: Start Date · is today. Then “Calculate Statistics” → Sum. Rename it Exercise.'],
+  ['Heart','Add “Find Health Samples”. Type: Resting Heart Rate. Filter: Start Date · is in the last · 1 day. Then “Calculate Statistics” → Average. Rename it RestingHR.','Add “Find Health Samples”. Type: Heart Rate Variability. Filter: Start Date · is in the last · 1 day. Then “Calculate Statistics” → Average. Rename it HRV.'],
+  ['Cycle (skip if not relevant)','Add “Find Health Samples”. Type: Menstrual Flow. Filter: Start Date · is today. Then “Count”. Rename it Period.'],
+  ['Send it to Mouch!','Add “Get Contents of URL”. Paste the address above. Tap the arrow: Method POST.','Headers → Add new header. Key: Authorization. Value: the pairing code above (it already starts with “Bearer”).','Request Body: JSON. Add these fields, each as Text with the matching variable: bed → Bed, wake → Wake, steps → Steps, exercise → Exercise, restingHr → RestingHR, hrv → HRV, period → Period.','Name the shortcut “Mouch Health”. Run it once by hand and allow Health access. You should see “Saved. Open Mouch! to import it.”'],
+  ['Run it automatically','Shortcuts → Automation → New Automation → Alarm → “Is Stopped”, Wake-Up alarm → Run Immediately → Mouch Health. This fills in last night\'s sleep.','New Automation → Time of Day → 9:00 PM, Daily → Run Immediately → Mouch Health. This brings the full day\'s steps, exercise and heart rate.']
+];
+const looseNum = v => { if(Array.isArray(v)) v=v[0]; if(typeof v==='number') return isFinite(v)?v:undefined; if(typeof v!=='string') return undefined; const m=/-?\d[\d,]*(?:\.\d+)?/.exec(v); if(!m) return undefined; const n=+m[0].replace(/,/g,''); return isFinite(n)?n:undefined; };
+function looseTime(v){
+  if(Array.isArray(v)) v=v[0];
+  if(typeof v!=='string'||!v.trim()) return undefined;
+  const s=v.trim();
+  if(/^\d{4}-\d\d-\d\dT/.test(s)){ const d=new Date(s); if(!isNaN(d)) return hm(d); }
+  const m=/(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([AaPp])?\.?[Mm]?/.exec(s); if(!m) return undefined;
+  let h=+m[1]; const mi=+m[2], ap=m[3]&&m[3].toLowerCase();
+  if(ap==='p'&&h<12) h+=12; if(ap==='a'&&h===12) h=0;
+  return h>23||mi>59 ? undefined : pad(h)+':'+pad(mi);
+}
+function parseHealth(b, at){
+  const pick=(...ks)=>{ for(const k of ks) for(const bk in b) if(bk.toLowerCase().replace(/[^a-z]/g,'')===k) return b[bk]; };
+  const o={syncedAt:at}, from=looseTime(pick('bed','sleepfrom','sleepstart')), to=looseTime(pick('wake','sleepto','sleepend'));
+  const steps=looseNum(pick('steps','stepcount')), ex=looseNum(pick('exercise','exercisemin','exerciseminutes','exercisetime')), rhr=looseNum(pick('restinghr','restingheartrate','rhr')), hrv=looseNum(pick('hrv','heartratevariability')), per=pick('period','menstrual','menstrualflow');
+  if(from&&to&&from!==to){ o.sleepFrom=from; o.sleepTo=to; }
+  if(steps!=null&&steps>=0&&steps<200000) o.steps=Math.round(steps);
+  if(ex!=null&&ex>=0&&ex<1440) o.exerciseMin=Math.round(ex);
+  if(rhr!=null&&rhr>20&&rhr<220) o.restingHr=Math.round(rhr);
+  if(hrv!=null&&hrv>0&&hrv<400) o.hrv=Math.round(hrv);
+  if(per!==undefined&&per!==''){ const n=looseNum(per); o.menstrual = n!=null ? n>0 : /yes|true|light|medium|heavy|flow/i.test(String(per)); }
+  return o;
+}
+const auth = () => ({authorization:'Bearer '+S.health.token});
+async function healthOn(){
+  const t=S.health.token || b64(crypto.getRandomValues(new Uint8Array(24))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  try{ const r=await fetch('/api/health-pair',{method:'POST', headers:{authorization:'Bearer '+t}}); if(!r.ok){ toast((await r.text())||'Pairing failed'); return; } }
+  catch(e){ toast('You need to be online to connect'); return; }
+  S.health.token=t; save(); render(); toast('Connected. Now build the Shortcut');
+}
+async function healthOff(){
+  if(S.health.token) fetch('/api/health-pair',{method:'DELETE', headers:auth()}).catch(()=>{});
+  S.health={token:null, last:null}; save(); render(); toast('Disconnected');
+}
+let healthBusy=false;
+async function pullHealth(){
+  if(!S.health.token || healthBusy || navigator.onLine===false) return 0;
+  healthBusy=true;
+  try{
+    const r=await fetch('/api/health',{headers:auth(), cache:'no-store'}); if(!r.ok) return 0;
+    const items=(await r.json()).items||[]; if(!items.length) return 0;
+    items.forEach(it=>{ const at=new Date(it.receivedAt), d=day(key(at)), h=parseHealth(it.body||{}, it.receivedAt), prev=d.health||{};
+      d.health=Object.assign({}, prev, h);
+      if(!h.sleepFrom && prev.sleepFrom){ d.health.sleepFrom=prev.sleepFrom; d.health.sleepTo=prev.sleepTo; } });
+    S.health.last=items[items.length-1].receivedAt; save();
+    await fetch('/api/health',{method:'DELETE', headers:Object.assign({'content-type':'application/json'},auth()), body:JSON.stringify({ids:items.map(i=>i.id)})});
+    softRender();
+    return items.length;
+  }catch(e){ return 0; }finally{ healthBusy=false; }
+}
+
+/* ---------- push notifications: the server's cron sends them, this keeps it up to date ---------- */
+const urlKey = s => { const p=(s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'); return unb64(p); };
+async function pushOn(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)){ toast('Open Mouch! from your Home Screen to turn these on'); return; }
+  let perm=Notification.permission;
+  if(perm==='default') perm=await Notification.requestPermission();
+  if(perm!=='granted'){ toast('Blocked. Allow it in Settings → Notifications → Mouch!'); return; }
+  try{
+    const cfg=await fetch('/api/push-config',{cache:'no-store'}).then(r=>r.ok?r.json():null);
+    if(!cfg){ toast('The notification server isn\'t ready'); return; }
+    const reg=await navigator.serviceWorker.ready;
+    const sub=(await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlKey(cfg.publicKey)});
+    S.notify.on=true; save();
+    if(!(await sendState(sub))){ toast('Couldn\'t reach the server. Try again'); S.notify.on=false; save(); render(); return; }
+    render(); toast('Notifications on');
+  }catch(e){ toast('Couldn\'t turn on notifications'); }
+}
+async function pushOff(){
+  S.notify.on=false; save(); render();
+  try{ const reg=await navigator.serviceWorker.ready, sub=await reg.pushManager.getSubscription(); if(sub) await sub.unsubscribe(); }catch(e){}
+  fetch('/api/subscribe',{method:'DELETE', headers:{'content-type':'application/json'}, body:JSON.stringify({deviceId:S.device})}).catch(()=>{});
+}
+/* what the server needs to time today's reminders — no diary entries */
+async function sendState(sub){
+  try{
+    if(!sub){ const reg=await navigator.serviceWorker.ready; sub=await reg.pushManager.getSubscription(); if(!sub) return false; }
+    const N=S.notify, tk=TODAY(), d=S.days[tk]||{}, secs=d.secs||{}, live=S.live&&S.attacks.find(a=>a.id===S.live);
+    const at=(dk,t)=>{ const x=parse(dk); const [h,m]=t.split(':').map(Number); x.setHours(h,m,0,0); return x.toISOString(); };
+    const body={deviceId:S.device, subscription:sub.toJSON(), timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone, location:{lat:S.weather.lat, lon:S.weather.lon},
+      prefs:{morning:N.morning, midday:N.midday, water:N.water, evening:N.evening, rating:N.rating, weather:N.weather, doses:N.doses, attackFollowUp:N.attack},
+      pressureNudgeHpa:S.weather.threshold,
+      status:{date:tk, rated:d.rating!=null, morning:!!secs.morning, midday:!!secs.midday, evening:!!secs.evening, waterLow:!!(d.ci&&d.ci.waterMid==='low')},
+      doses:S.doses.filter(x=>x.relief==null&&!S.dismissed.includes(x.id)&&Date.now()-doseAt(x)<8*3600e3).slice(-10).map(x=>({id:x.id, name:x.med, time:at(x.date,x.time)})),
+      ongoingAttackStart: live ? at(live.date, live.start) : null};
+    const r=await fetch('/api/subscribe',{method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)});
+    return r.ok;
+  }catch(e){ return false; }
+}
+var syncTimer=null;
+function queueSync(){ if(!S.notify||!S.notify.on||!('serviceWorker' in navigator)) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>sendState(), 1500); }
+async function pushTest(){
+  try{ const reg=await navigator.serviceWorker.ready; await reg.showNotification('Mouch!',{body:'Notifications work. The next one is your '+nextSlot()+'.', icon:'/icons/icon-192.png', tag:'test'}); }
+  catch(e){ toast('Couldn\'t show a notification'); }
+}
+function nextSlot(){
+  const now=toMin(hm(NOW())), names={morning:'morning log',midday:'midday log',water:'water reminder',evening:'evening log',rating:'rating reminder'};
+  const xs=Object.keys(names).filter(k=>S.notify[k]).map(k=>[k,toMin(S.notify[k])]).sort((a,b)=>a[1]-b[1]);
+  const n=xs.find(x=>x[1]>now)||xs[0]; return n ? names[n[0]]+' at '+fmt12(S.notify[n[0]]) : 'next reminder';
+}
 
 /* ---------- render ---------- */
 let lastVK='';
@@ -1001,7 +1324,9 @@ function render(){
   const fEl=document.querySelector('.full'), sEl=document.querySelector('.sheet'), keepF=fEl?fEl.scrollTop:0, keepS=sEl?sEl.scrollTop:0, keepW=window.scrollY, same=vk===lastVK; lastVK=vk;
   const app=$('#app'); let h='';
   const v=V.view;
-  if(v==='onboard') h=vOnboard();
+  if(V.locked){ app.innerHTML=vLock(); document.body.style.overflow='hidden'; focusField(); return; }
+  if(v==='setlock') h=vSetLock();
+  else if(v==='onboard') h=vOnboard();
   else if(v==='today') h=vToday();
   else if(v==='forecast') h=vForecast();
   else if(v==='calendar') h=vCalendar();
@@ -1013,38 +1338,59 @@ function render(){
   else if(v==='attack') h=vAttack();
   else if(v==='flag') h=vFlag();
   app.innerHTML = h + vSheet();
-  document.body.style.overflow = ['checkin','attack','flag','onboard'].includes(v)||V.sheet ? 'hidden' : '';
+  document.body.style.overflow = ['checkin','attack','flag','onboard','setlock'].includes(v)||V.sheet ? 'hidden' : '';
   if(same){ const f2=document.querySelector('.full'); if(f2) f2.scrollTop=keepF; const s2=document.querySelector('.sheet'); if(s2&&V.sheet) s2.scrollTop=keepS; window.scrollTo(0,keepW); }
+  focusField();
 }
+function focusField(){ const f=document.querySelector('[data-focus]'); if(f && document.activeElement && document.activeElement.tagName!=='INPUT') f.focus(); }
 function go(v){ V.view=v; V.confirmDel=false; render(); window.scrollTo(0,0); }
 
 /* ---------- actions ---------- */
 const STEP15 = (t,dir)=>fromMin(toMin(t)+dir*15);
-function openCheckin(k, start){ V.ci={k, i:start||0}; const a=ciAns(); if(a.stressY==null){ const yk=key(addDays(parse(k),-1)); const y=S.days[yk]; if(y&&y.ci&&y.ci.stress!=null) a.stressY=y.ci.stress; } V.view='checkin'; render(); }
+/* open the log for day k: one section, or every section that's open (skipping finished ones when onlyUndone) */
+function openCheckin(k, sec, onlyUndone){
+  if(!editable(k)) return false;
+  const secs = sec ? SECS.filter(s=>s.id===sec) : SECS.filter(s=>{ const st=secState(s.id,k); return st!=='locked' && !(onlyUndone&&st==='done'); });
+  if(!secs.length) return false;
+  const d=day(k), qs=secs.flatMap(s=>s.qs).filter(id=>id!=='rate'||d.rating==null);
+  V.ci={k, qs, i:0, secs:secs.map(s=>s.id)}; V.pick=null;
+  const a=ciAns(); if(a.stressY==null){ const yk=key(addDays(parse(k),-1)); const y=S.days[yk]; if(y&&y.ci&&y.ci.stress!=null) a.stressY=y.ci.stress; }
+  V.view='checkin'; render(); window.scrollTo(0,0); return true;
+}
+function markDone(){ const d=day(V.ci.k); d.secs=d.secs||{}; V.ci.secs.forEach(s=>{ if(!d.secs[s]) d.secs[s]=new Date().toISOString(); }); }
 function deriveMeal(){
   const a=ciAns(), M=a.meals||{}; let bad=false;
   ['breakfast','lunch','dinner'].forEach(k=>{ const m=M[k]; if(!m) return; if(m.skip) bad=true; else if(m.items.length && m.time && toMin(m.time)>toMin(MEAL_LATE[k])) bad=true; });
   const y=S.days[key(addDays(parse(V.ci.k),-1))], yb=!!(y&&y.ci&&(y.ci.meal==='today'||y.ci.meal==='both'));
   a.meal = bad ? (yb?'both':'today') : (yb?'yesterday':'no');
 }
-function ciAdvance(){ V.ci.i++; const a=ciAns(); while(V.ci.i<Q.length && Q[V.ci.i].skipIf && Q[V.ci.i].skipIf(a)) V.ci.i++; save(); render(); }
+const ciQ = i => QB[V.ci.qs[i]];
+function ciAdvance(){ V.pick=null; V.ci.i++; const a=ciAns(); while(V.ci.i<V.ci.qs.length && ciQ(V.ci.i).skipIf && ciQ(V.ci.i).skipIf(a)) V.ci.i++; if(V.ci.i>=V.ci.qs.length) markDone(); save(); render(); }
 function newAttack(k, live){ const id='a'+Date.now(); const t=hm(NOW()); const a={id,date:k,start:live?t:'14:00',end:live?null:'17:00',peak:live?0:5,regions:[],extra:[],symptoms:[],doses:[],did:[],lost:null,done:!live}; S.attacks.push(a); if(live) S.live=id; day(k).headache=true; save(); return a; }
 
 const A = {
   go:v=>go(v),
-  rate:n=>{ n=+n; const d=day(TODAY()); d.rating=n; save(); const b=band(n); if(b==='normal'){ V.followUp=true; render(); } else { V.followUp=false; openCheckin(TODAY()); } },
+  /* rating: a tap picks and explains, Save commits */
+  pick:(k,n)=>{ if(!editable(k)) return; V.pick={k, n:+n}; render(); },
+  pickCancel:()=>{ V.pick=null; render(); },
+  pickSave:()=>{ const p=V.pick; if(!p) return; V.pick=null; day(p.k).rating=p.n; save();
+    if(V.view==='checkin'){ ciAdvance(); return; }
+    toast('Saved '+p.n+' — '+MEAN[p.n][0]);
+    if(V.view==='today'){ V.followUp = band(p.n)==='normal' || !openCheckin(p.k, null, true); if(V.followUp) render(); return; }
+    render(); },
+  openSec:id=>{ if(!openCheckin(TODAY(), id)) toast('The '+id+' log opens at '+fmt12(S.sections[id])); },
+  secLocked:id=>toast('The '+id+' log opens at '+fmt12(S.sections[id])),
   headache:v=>{ day(TODAY()).headache=v==='1'; V.followUp=false; save(); render(); toast('Saved'); },
   toggleHeadache:()=>{ const d=day(TODAY()); d.headache=!d.headache; save(); render(); },
-  editDetail:k=>openCheckin(k),
+  editDetail:k=>{ if(!openCheckin(k)) toast('Nothing to fill in yet'); },
   relief:(id,v)=>{ const d=S.doses.find(x=>x.id===id); if(d) d.relief=v; save(); render(); toast('Saved'); },
-  logAttackFor:k=>{ const a=newAttack(k,false); V.atk=a.id; V.expandUnusual=false; go('attack'); },
+  logAttackFor:k=>{ if(!editable(k)) return; const a=newAttack(k,false); V.atk=a.id; V.expandUnusual=false; go('attack'); },
   exp:v=>{ const e=S.plan.experiments[0]; if(!e) return; const k=TODAY(); e.done[k] = e.done[k]===(v==='1')? undefined : v==='1'; save(); render(); },
   recent:f=>{ V.recentFilter=f; render(); },
   openDay:k=>{ V.dayKey=k; go('day'); },
-  rateDay:n=>{ day(V.dayKey).rating=+n; save(); render(); toast('Saved'); },
-  toggleDayHeadache:()=>{ const d=day(V.dayKey); d.headache=!d.headache; save(); render(); },
+  toggleDayHeadache:()=>{ if(!editable(V.dayKey)) return; const d=day(V.dayKey); d.headache=!d.headache; save(); render(); },
   askDel:()=>{ V.confirmDel=true; render(); },
-  delDay:v=>{ if(v==='1'){ delete S.days[V.dayKey]; S.attacks=S.attacks.filter(a=>a.date!==V.dayKey); S.doses=S.doses.filter(d=>d.date!==V.dayKey); save(); V.confirmDel=false; go('calendar'); toast('Deleted'); } else { V.confirmDel=false; render(); } },
+  delDay:v=>{ if(v==='1'&&editable(V.dayKey)){ delete S.days[V.dayKey]; S.attacks=S.attacks.filter(a=>a.date!==V.dayKey); S.doses=S.doses.filter(d=>d.date!==V.dayKey); save(); V.confirmDel=false; go('calendar'); toast('Deleted'); } else { V.confirmDel=false; render(); } },
   openAttack:id=>{ V.atk=id; V.expandUnusual=false; go('attack'); },
   calMove:d=>{ const t=NOW(); let [y,m]=V.calMonth||[t.getFullYear(),t.getMonth()]; m+=+d; if(m<0){m=11;y--;} if(m>11){m=0;y++;} V.calMonth=[y,m]; render(); },
   insMove:d=>{ const t=NOW(); let [y,m]=V.insMonth||[t.getFullYear(),t.getMonth()]; m+=+d; if(m<0){m=11;y--;} if(m>11){m=0;y++;} if(y*12+m>t.getFullYear()*12+t.getMonth()) return; V.insMonth=[y,m]; render(); },
@@ -1055,6 +1401,7 @@ const A = {
   ansPhone:v=>{ ciAns().phone=v; save(); render(); },
   ansM:(id,v)=>{ v=decodeURIComponent(v); const a=ciAns(); a[id]=a[id]||[]; a[id]=a[id].includes(v)?a[id].filter(x=>x!==v):a[id].concat(v); save(); render(); },
   sleepUsual:()=>{ ciAns().sleep={usual:true}; save(); render(); setTimeout(ciAdvance,200); },
+  sleepHealth:()=>{ const h=day(V.ci.k).health; ciAns().sleep={usual:false, bed:h.sleepFrom, wake:h.sleepTo}; save(); render(); setTimeout(ciAdvance,200); },
   sleepDiff:()=>{ const a=ciAns(); if(!a.sleep||a.sleep.usual) a.sleep={usual:false,bed:'23:00',wake:'07:00'}; save(); render(); },
   sleepT:(f,dir)=>{ const s=ciAns().sleep; s[f]=STEP15(s[f],+dir); save(); render(); },
   ciTagAdd:()=>{ const t=V.ciTag.trim().toLowerCase(); if(t&&!allTags().includes(t)) S.tags.push(t); if(t){ const a=ciAns(); a.tags=(a.tags||[]).concat(t); } V.ciTag=''; save(); render(); },
@@ -1064,9 +1411,9 @@ const A = {
   cuisine:c=>{ V.cuisine=decodeURIComponent(c); render(); },
   food:(slot,f)=>{ f=decodeURIComponent(f); const m=ciAns().meals[slot]; m.items=m.items.includes(f)?m.items.filter(x=>x!==f):m.items.concat(f); deriveMeal(); save(); render(); },
   foodAdd:slot=>{ const n=(V.ciFood||'').trim(); if(!n) return; if(!FOODS.some(f=>f[0]===n)&&!S.customFoods.includes(n)) S.customFoods.push(n); const m=ciAns().meals[slot]; if(!m.items.includes(n)) m.items.push(n); V.ciFood=''; deriveMeal(); save(); render(); },
-  logMeals:()=>openCheckin(TODAY(),3),
+  logMeals:()=>{ const s=secState('evening',TODAY())!=='locked'?'evening':'midday'; if(!openCheckin(TODAY(), s)) toast('The midday log opens at '+fmt12(S.sections.midday)); },
   ciSkip:()=>ciAdvance(),
-  ciBack:()=>{ if(V.ci.i===0){ go('today'); return; } V.ci.i--; while(V.ci.i>0 && Q[V.ci.i].skipIf && Q[V.ci.i].skipIf(ciAns())) V.ci.i--; render(); },
+  ciBack:()=>{ V.pick=null; if(V.ci.i===0){ go('today'); return; } V.ci.i--; while(V.ci.i>0 && ciQ(V.ci.i).skipIf && ciQ(V.ci.i).skipIf(ciAns())) V.ci.i--; render(); },
   ciLater:()=>{ save(); go('today'); toast('Saved. Finish any time.'); },
   ciAtk:v=>{ V.ci.askedAtk=true; if(v==='1'){ const a=newAttack(V.ci.k,false); V.atk=a.id; go('attack'); } else render(); },
   ciDone:()=>{ go('today'); },
@@ -1122,18 +1469,49 @@ const A = {
   lastWd:v=>{ S.weather.lastWorkday=v; save(); render(); },
   theme:v=>{ S.theme=v; save(); render(); },
   nightDark:()=>{ S.nightDark=!S.nightDark; save(); render(); },
-  clearSample:()=>{ const keep={name:S.name,theme:S.theme,nightDark:S.nightDark}; const f=seed(); S=Object.assign(f,keep,{onboarded:true,sample:false,days:{},attacks:[],doses:[],plan:Object.assign(f.plan,{findings:[],experiments:[],food:[],nudges:[]}),pastPlans:[]}); day(TODAY()); save(); render(); toast('Sample data cleared'); },
-  wipe:()=>{ if(V.delTyped!=='DELETE') return; try{ localStorage.removeItem(STORE); }catch(e){} S=seed(); V.delTyped=''; V.ob=0; go('onboard'); },
+  clearSample:()=>{ const keep={name:S.name, theme:S.theme, nightDark:S.nightDark, lock:S.lock, notify:S.notify, sections:S.sections, health:S.health, device:S.device}; S=Object.assign(fresh(), keep, {onboarded:true}); day(TODAY()); save(); render(); toast('Sample data cleared'); },
+  wipe:()=>{ if(V.delTyped!=='DELETE') return;
+    if(S.notify&&S.notify.on) pushOff();
+    if(S.health&&S.health.token) fetch('/api/health-pair',{method:'DELETE', headers:auth()}).catch(()=>{});
+    try{ localStorage.removeItem(STORE); }catch(e){}
+    S=fresh(); migrate(); save(); V.delTyped=''; V.ob=0; V.locked=false; V.forgot=false; go('onboard'); },
+  /* notifications */
+  pushOn:()=>pushOn(),
+  pushOff:()=>{ pushOff(); toast('Notifications off'); },
+  pushTest:()=>pushTest(),
+  nT:(id,dir)=>{ S.notify[id]=STEP15(S.notify[id],+dir); save(); render(); },
+  nOn:id=>{ S.notify[id] = S.notify[id] ? null : {morning:'08:00',midday:'13:00',water:'16:00',evening:'19:30',rating:'21:00'}[id]; save(); render(); },
+  nFlag:f=>{ S.notify[f]=!S.notify[f]; save(); render(); },
+  secT:(id,dir)=>{ S.sections[id]=STEP15(S.sections[id],+dir); save(); render(); },
+  /* weather & health */
+  wxNow:()=>{ fetchWx(true).then(()=>toast(S.weather.at?'Weather updated':'Couldn\'t reach Open-Meteo')); },
+  healthOn:()=>healthOn(),
+  healthOff:()=>{ if(confirm('Disconnect Apple Health? Your Shortcut stops working until you set it up again with the new code.')) healthOff(); },
+  healthPull:()=>{ pullHealth().then(n=>toast(n?'Imported '+n+' update'+(n===1?'':'s')+' from Apple Health':'Nothing new yet')); },
+  copy:what=>{ const t = what==='addr' ? location.origin+'/api/health' : 'Bearer '+S.health.token;
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(()=>toast('Copied'),()=>toast('Press and hold to copy')); else toast('Press and hold to copy'); },
+  /* passcode */
+  passSave:async()=>{ const p=V.pass1;
+    if(!p){ V.passErr='Type a passcode first.'; render(); return; }
+    if(p!==V.pass2){ V.passErr='The two don\'t match. Try again.'; V.pass2=''; render(); return; }
+    await setPass(p); V.pass1=V.pass2=V.passErr='';
+    const first=!S.onboarded; S.onboarded=true; save(); go('today'); toast(first?'Welcome to Mouch!':'Passcode saved'); afterUnlock(); },
+  passChange:()=>{ V.pass1=V.pass2=V.passErr=''; go('setlock'); },
+  lockNow:()=>{ V.locked=true; V.passIn=''; V.passErr=''; render(); },
+  unlock:async()=>{ if(await checkPass(V.passIn)){ V.locked=false; V.passIn=''; V.passErr=''; render(); afterUnlock(); } else { V.passErr='That\'s not it. Try again.'; V.passIn=''; render(); } },
+  forgot:v=>{ V.forgot=v==='1'; V.delTyped=''; render(); },
   /* onboarding */
-  obNext:()=>{ if(V.ob<4){ V.ob++; render(); } else { S.onboarded=true; save(); go('today'); maybeLate(); } },
-  obSkip:()=>{ S.onboarded=true; save(); go('today'); maybeLate(); }
+  obNext:()=>{ if(V.ob<5){ V.ob++; render(); } },
+  obSkip:()=>{ V.ob=5; render(); }
 };
 function selectPre(){ const p=$('#exportJson'); if(!p) return; const r=document.createRange(); r.selectNodeContents(p); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selected — copy it'); }
 
 document.addEventListener('click', e=>{
   const el=e.target.closest('[data-a]'); if(!el) return;
   if(el.classList.contains('scrim') && e.target!==el) return; // clicks inside sheet bubble to scrim only when on scrim itself
+  if(el.closest('.ro') || el.disabled) return; // read-only days and attacks
   const parts=el.dataset.a.split(':'); const fn=A[parts[0]];
+  if(V.locked && !['unlock','forgot','wipe'].includes(parts[0])) return;
   if(fn){ e.preventDefault(); fn(...parts.slice(1)); }
 });
 document.addEventListener('input', e=>{
@@ -1144,18 +1522,44 @@ document.addEventListener('input', e=>{
   V[k]=e.target.value;
   if(k==='delTyped'){ const b=document.querySelector('[data-a="wipe"]'); if(b){ const ok=V.delTyped==='DELETE'; b.disabled=!ok; b.style.opacity=ok?'1':'.4'; } }
 });
-document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciTag'){ e.preventDefault(); A.ciTagAdd(); } if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciFood'){ e.preventDefault(); const b=document.querySelector('[data-a^="foodAdd:"]'); if(b) b.click(); } if(e.key==='Escape' && V.sheet){ A.sheetClose(); } });
+document.addEventListener('keydown', e=>{ const di=e.target.dataset&&e.target.dataset.in; if(e.key==='Enter' && di==='passIn'){ e.preventDefault(); A.unlock(); } if(e.key==='Enter' && (di==='pass1'||di==='pass2')){ e.preventDefault(); if(di==='pass1'&&!V.pass2){ const p2=$('#pass2'); if(p2) p2.focus(); } else A.passSave(); } if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciTag'){ e.preventDefault(); A.ciTagAdd(); } if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciFood'){ e.preventDefault(); const b=document.querySelector('[data-a^="foodAdd:"]'); if(b) b.click(); } if(e.key==='Escape' && V.sheet){ A.sheetClose(); } });
 
 function maybeLate(){
   const now=NOW(), wd=now.getDay(), lastWd={Thu:4,Fri:5,Sat:6}[S.screen.lastWorkday]||5;
   const workday = wd>=1 && wd<=lastWd;
   if(S.screen.lateOn && (!S.screen.workdaysOnly||workday) && isLate(hm(now)) && !S.live) setTimeout(()=>notify('Still working at '+fmt12(hm(now))+'.','Late nights came before most of your pain days (a hunch so far). Time to wind down?',['Winding down','Ask in 30 min']), 1600);
 }
-// timer: redraw once a minute, no seconds
-setInterval(()=>{ const t=$('#timer'); const a=S.live&&S.attacks.find(x=>x.id===S.live); if(t&&a) t.textContent=elapsed(a); else if(S.live && V.view!=='attack' && !['checkin','onboard','flag'].includes(V.view)) render(); }, 60000);
+// timer: redraw once a minute, no seconds. Also lets log sections unlock on screen.
+let ticks=0;
+setInterval(()=>{ ticks++; const t=$('#timer'); const a=S.live&&S.attacks.find(x=>x.id===S.live); if(t&&a) t.textContent=elapsed(a); else if((S.live||ticks%5===0) && V.view==='today' && !V.sheet) softRender(); }, 60000);
+
+/* a tapped notification opens its log: ?open=morning on launch, or a message from the service worker */
+let pendingOpen = new URLSearchParams(location.search).get('open');
+if(pendingOpen) history.replaceState(null,'','/');
+function handleOpen(x){
+  x = x || pendingOpen; pendingOpen=null; if(!x) return;
+  if(V.locked || !S.onboarded){ pendingOpen=x; return; }
+  if(['morning','midday','evening'].includes(x)){ if(!openCheckin(TODAY(), x)) go('today'); }
+  else if(x==='plan') go('plan');
+  else if(x==='attack' && S.live) A.openLive();
+  else go('today');
+}
+function afterUnlock(){ if(!S.onboarded) return; maybeLate(); handleOpen(); }
+if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e=>{ if(e.data && e.data.open) handleOpen(e.data.open); });
+
+/* relock after 5 minutes away; fresh weather and Health on every return */
+let hiddenAt=0;
+function refresh(){ fetchWx(); pullHealth().then(n=>{ if(n && !V.locked) toast('Apple Health: '+n+' new update'+(n===1?'':'s')); }); queueSync(); }
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){ hiddenAt=Date.now(); return; }
+  if(S.lock && hiddenAt && Date.now()-hiddenAt>5*60e3){ V.locked=true; V.passIn=''; V.passErr=''; V.forgot=false; render(); }
+  else softRender();
+  hiddenAt=0; refresh();
+});
 
 render();
-if(S.onboarded) maybeLate();
+if(!V.locked) afterUnlock();
+refresh();
 })();
 </script>
 

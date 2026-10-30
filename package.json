@@ -1,0 +1,19 @@
+{
+  "name": "mouch",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p api"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/web-push": "^3.6.4",
+    "@vercel/node": "^3.2.29",
+    "typescript": "^5.9.3"
+  }
+}
