@@ -151,6 +151,8 @@ h1,h2,h3,p{margin:0}
 .ring span{font-weight:500}
 
 /* toast / banner */
+.toast .undo{background:none;border:0;color:#FFB4AD;font:inherit;font-weight:700;text-decoration:underline;padding:6px 0 6px 6px;margin:-6px 0;cursor:pointer}
+.bk-code{font:600 17px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.04em;overflow-wrap:anywhere}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(104px + env(safe-area-inset-bottom,0px));background:var(--indigo);color:#F6F4F0;border-radius:999px;padding:14px 22px;font-weight:600;z-index:40;box-shadow:var(--shadow);display:flex;gap:8px;align-items:center}
 .notif{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));width:min(448px,calc(100% - 24px));background:rgba(34,36,59,.96);color:#F6F4F0;border-radius:24px;padding:14px 16px;z-index:50;box-shadow:0 18px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:6px}
 .notif .nh{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#C9C9DA}
@@ -383,7 +385,7 @@ const ic = (n,c='') => '<svg class="ic '+c+'" viewBox="0 0 24 24" aria-hidden="t
 /* ---------- state ---------- */
 const STORE='mouch.v3';
 function load(){ try{ const s=localStorage.getItem(STORE); return s?JSON.parse(s):null; }catch(e){ return null; } }
-function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} queueSync(); }
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} queueSync(); queueBackup(); }
 
 function seed(){
   rnd = 7;
@@ -485,6 +487,7 @@ function migrate(){
   if(!S.sections) S.sections={morning:'05:00', midday:'12:00', evening:'18:00'};
   if(!S.health) S.health={token:null, last:null};
   if(S.lock===undefined) S.lock=null;
+  if(!S.backup) S.backup={code:null, last:null, file:null, err:null};
   if(!S.device) S.device='d-'+Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');
   S.v=2;
 }
@@ -493,7 +496,7 @@ migrate(); save();
 // keep "today" fresh if the stored seed is from an earlier day
 if(!S.days[TODAY()]) S.days[TODAY()] = {rating:null, headache:false, press:S.weather.today, mac:0, lastActive:''};
 
-const V = { view: S.onboarded?(S.lock?'today':'setlock'):'onboard', locked:!!S.lock, pick:null, pass1:'', pass2:'', passIn:'', passErr:'', forgot:false, ob:0, dayKey:null, calMonth:null, insMonth:null, recentFilter:'all', ci:null, atk:null, flagFrom:null, sheet:null, followUp:false, importText:'', importResult:null, delTyped:'', newTag:'', newMed:'', newMedCls:'nsaid', expandUnusual:false, ciTag:'' };
+const V = { view: S.onboarded?(S.lock?'today':'setlock'):'onboard', locked:!!S.lock, pick:null, pass1:'', pass2:'', passIn:'', passErr:'', forgot:false, ob:0, dayKey:null, calMonth:null, insMonth:null, recentFilter:'all', ci:null, atk:null, flagFrom:null, sheet:null, followUp:false, importText:'', importResult:null, delTyped:'', newTag:'', newMed:'', newMedCls:'nsaid', expandUnusual:false, ciTag:'', bkIn:'', restore:null, bkBusy:false };
 
 /* ---------- theme ---------- */
 function applyTheme(){
@@ -939,7 +942,20 @@ function vPrefs(){
   h+=grp('Tags', '<p class="tiny" style="padding-top:12px">'+allTags().length+' built-in tags are always in the check-in. Your own:</p><div class="pills" style="padding:10px 0">'+(S.tags.length?'':'<span class="small">None yet</span>')+S.tags.map((t,i)=>'<button class="chip" data-a="tagDel:'+i+'" aria-label="Remove tag '+esc(t)+'">'+esc(t)+ic('close','s')+'</button>').join('')+'</div><div class="lrow"><input class="inp" id="newTag" placeholder="New tag" value="'+esc(V.newTag)+'" data-in="newTag"><button class="btn sm dark" data-a="tagAdd">Add</button></div>');
   h+=grp('Weather', '<div class="lrow"><span>Location</span><span>'+esc(S.weather.loc)+' · '+S.weather.lat+', '+S.weather.lon+'</span></div><div class="lrow"><span>Live data<span class="tiny" style="display:block">'+(S.weather.at?'Open-Meteo · updated '+fmt12(hm(new Date(S.weather.at))):'Not fetched yet. Needs internet.')+'</span></span><button class="btn sm" data-a="wxNow">Update</button></div><div class="lrow"><span>Big pressure change</span>'+stepper(S.weather.threshold+' hPa','thresh','threshold')+'</div><div class="lrow"><span>Last workday</span>'+seg([['Thu','Thu'],['Fri','Fri'],['Sat','Sat']],S.weather.lastWorkday,'lastWd')+'</div>');
   h+=grp('Theme', '<div style="padding:10px 0">'+seg([['dark','Dark'],['light','Light'],['system','System']],S.theme,'theme')+'</div><div class="lrow"><span>Dark from 8 PM to 6 AM<span class="tiny" style="display:block">When the theme is set to System</span></span>'+tog(S.nightDark,'nightDark','Dark at night')+'</div>');
-  h+=grp('Your data', '<div class="lrow"><span>Export everything (JSON)</span><button class="btn sm" data-a="sheet:export">Export</button></div>'+(S.sample?'<div class="lrow"><span>Sample month loaded<span class="tiny" style="display:block">The ratings and attacks you see are examples.</span></span><button class="btn sm" data-a="clearSample">Clear</button></div>':'')+'<div class="lrow"><span>Sync</span><span class="small">Off</span></div><div style="display:flex;flex-direction:column;gap:8px;padding:12px 0"><label for="delbox" class="small">Delete all data — type DELETE</label><div class="row2"><input class="inp" id="delbox" data-in="delTyped" value="'+esc(V.delTyped)+'" autocomplete="off"><button class="btn danger" data-a="wipe" '+(V.delTyped==='DELETE'?'':'disabled style="opacity:.4"')+'>Delete</button></div></div>');
+  const B=S.backup, R=V.restore;
+  let bk='';
+  if(R) bk+='<div class="tile mist" style="gap:10px;margin:12px 0"><b>Replace the diary on this phone?</b><span class="small">'+(R.from==='file'?'Backup file':'Online backup')+(R.saved?' from '+whenStr(R.saved):'')+' · '+bkSummary(R.data)+'</span><span class="small">What\'s on this phone now ('+bkSummary(S)+') will be replaced. Your passcode stays the same.</span><div class="row2"><button class="btn" data-a="restoreNo">Keep this phone\'s</button><button class="btn dark" data-a="restoreYes">Replace</button></div></div>';
+  if(B.code){
+    bk+='<div class="lrow"><span>Online backup<span class="tiny" style="display:block">'+(B.err?esc(B.err):B.last?'Saved '+whenStr(B.last)+'. Updates on its own after each change.':'Not saved yet')+'</span></span><button class="btn sm" data-a="bkNow"'+(V.bkBusy?' disabled':'')+'>'+(V.bkBusy?'Saving…':'Back up now')+'</button></div>';
+    bk+='<div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)"><span class="small">Your backup code</span><div class="copyrow"><span class="bk-code">'+esc(B.code)+'</span><button class="btn sm" data-a="bkCopy">'+ic('copy','s')+'Copy</button></div><span class="tiny">Save it in Notes or a password app, or screenshot it. On a new phone you type this code to get your diary back. Without it the backup can\'t be opened, by anyone.</span><button class="link" style="align-self:flex-start;color:var(--muted)" data-a="bkOff">Turn off and delete the online copy</button></div>';
+  } else {
+    bk+='<div style="display:flex;flex-direction:column;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)"><span>Online backup<span class="tiny" style="display:block">Right now your diary lives only on this phone. Lose the phone or clear Safari\'s data and it\'s gone. Backup keeps a scrambled copy online that only your backup code can open.</span></span><button class="btn dark block" data-a="bkOn"'+(V.bkBusy?' disabled':'')+'>'+(V.bkBusy?'Turning on…':'Turn on backup')+'</button></div>';
+  }
+  bk+='<div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)"><label for="bkIn" class="small">New phone? Restore with a backup code</label><input class="inp" id="bkIn" data-in="bkIn" value="'+esc(V.bkIn)+'" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" style="font-family:ui-monospace,Menlo,monospace"><button class="btn dark block" data-a="bkRestore"'+(V.bkBusy?' disabled':'')+'>'+(V.bkBusy?'Looking…':'Find my backup')+'</button></div>';
+  bk+='<div class="lrow"><span>Backup file<span class="tiny" style="display:block">'+(B.file?'Last saved '+whenStr(B.file)+'. ':'')+'Save it to Files, iCloud Drive or email.</span></span><button class="btn sm" data-a="bkFile">Save file</button></div>';
+  bk+='<div class="lrow"><span>Restore from a file</span><button class="btn sm" data-a="bkPick">Choose file</button><input type="file" id="bkFileIn" accept="application/json,.json" hidden></div>';
+  h+=grp('Backup', bk);
+  h+=grp('Your data', '<div class="lrow"><span>Export for Claude<span class="tiny" style="display:block">For finding patterns. Not a backup.</span></span><button class="btn sm" data-a="sheet:export">Export</button></div>'+(S.sample?'<div class="lrow"><span>Sample month loaded<span class="tiny" style="display:block">The ratings and attacks you see are examples.</span></span><button class="btn sm" data-a="clearSample">Clear</button></div>':'')+'<div style="display:flex;flex-direction:column;gap:8px;padding:12px 0"><label for="delbox" class="small">Delete all data — type DELETE</label><div class="row2"><input class="inp" id="delbox" data-in="delTyped" value="'+esc(V.delTyped)+'" autocomplete="off"><button class="btn danger" data-a="wipe" '+(V.delTyped==='DELETE'?'':'disabled style="opacity:.4"')+'>Delete</button></div></div>');
   h+='<p class="tiny" style="text-align:center;padding:14px 0"><span class="wordmark" style="font-size:16px;color:var(--ink)">Mouch<i>!</i></span> · v1.0 · no analytics, no ads · Mouch it out!</p>';
   return h;
 }
@@ -1089,7 +1105,7 @@ function vOnboard(){
   h+='<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;align-items:center;gap:10px">'+logo(36)+'<span class="wordmark" style="font-size:24px">Mouch<i>!</i></span></span><button class="ci-later" data-a="obSkip">Skip</button></div>';
   if(i===0){
     h+='<div style="position:relative;display:flex;flex-direction:column;gap:18px;padding-top:30px"><div class="orb" style="width:220px;height:220px;left:50%;margin-left:-110px;top:-10px;opacity:.75"></div><div style="height:220px;display:grid;place-items:center;position:relative">'+logo(150)+'</div><h1 style="font-weight:400;font-size:46px;line-height:1.02;letter-spacing:-.04em;text-align:center;position:relative">Mouch it out!</h1><p class="small" style="text-align:center;font-size:17px;line-height:1.5;max-width:330px;margin:0 auto">A private migraine diary that learns your patterns, warns you before bad days, and tells you what to eat, drink and skip.</p></div>';
-    h+='<div style="display:flex;flex-direction:column;gap:8px"><label for="obName" class="small">What should we call you?</label><input type="text" id="obName" data-in="name" value="'+esc(S.name)+'" style="min-height:56px;border-radius:999px;border:0;background:#3A3C5A;color:#F6F4F0;padding:0 20px;font-size:17px"></div>';
+    h+='<div style="display:flex;flex-direction:column;gap:8px"><label for="obName" class="small">What should we call you?</label><input type="text" id="obName" data-in="name" value="'+esc(S.name)+'" style="min-height:56px;border-radius:999px;border:0;background:#3A3C5A;color:#F6F4F0;padding:0 20px;font-size:17px"><span class="tiny" style="color:#B9B6C8">New phone? Set your passcode, then go to Settings → Backup and type your backup code.</span></div>';
   } else {
     const s=steps[i-1];
     h+='<div style="display:flex;flex-direction:column;align-items:center;gap:26px;padding-top:30px"><div class="ring" style="width:150px;height:150px">'+ringSvg(150,i/4,'#3A3C5A','#FF786E',9)+'<span style="font-size:44px" class="num">'+i+'</span></div><h1 class="ci-q">'+s[0]+'</h1><p class="small" style="text-align:center;font-size:18px;line-height:1.5;max-width:320px">'+s[1]+'</p></div>';
@@ -1173,6 +1189,10 @@ function notify(title, body, actions){
   n.innerHTML='<div class="nh"><span class="appi">'+logo(22)+'</span><b style="color:#F6F4F0">Mouch!</b><span style="margin-left:auto">now</span></div><p><b>'+esc(title)+'</b> '+esc(body)+'</p>'+(actions?'<div class="na">'+actions.map(a=>'<button data-a="notifX">'+esc(a)+'</button>').join('')+'</div>':'');
   L.querySelectorAll('.notif').forEach(x=>x.remove()); L.appendChild(n); clearTimeout(notifTimer); notifTimer=setTimeout(()=>n.remove(), 7000);
 }
+let UNDO=null;
+const snapshot = () => JSON.stringify({days:S.days, attacks:S.attacks, doses:S.doses, tags:S.tags, live:S.live});
+/* a delete keeps the old diary for 8 seconds; Undo puts it back */
+function toastUndo(t, snap){ const L=$('#layer'); L.querySelectorAll('.toast').forEach(x=>x.remove()); UNDO=snap; const n=document.createElement('div'); n.className='toast'; n.setAttribute('role','status'); n.innerHTML=ic('check','s')+esc(t)+'<button class="undo" data-a="undo">Undo</button>'; L.appendChild(n); setTimeout(()=>{ n.remove(); if(UNDO===snap) UNDO=null; },8000); }
 function toast(t){ const L=$('#layer'); L.querySelectorAll('.toast').forEach(x=>x.remove()); const n=document.createElement('div'); n.className='toast'; n.innerHTML=ic('check','s')+esc(t); L.appendChild(n); setTimeout(()=>n.remove(),2600); }
 /* redraw only screens without a text field in use */
 const softRender = () => { if(!V.locked && ['today','forecast','prefs','day','calendar','insights'].includes(V.view) && !(V.sheet&&V.sheet.type==='import')) render(); };
@@ -1317,6 +1337,68 @@ function nextSlot(){
   const n=xs.find(x=>x[1]>now)||xs[0]; return n ? names[n[0]]+' at '+fmt12(S.notify[n[0]]) : 'next reminder';
 }
 
+/* ---------- backup: a scrambled copy online that only the backup code opens, plus backup files ---------- */
+// what a backup holds: the diary and its settings, never this phone's passcode, push or Health pairing
+const BK_SKIP=['lock','device','health','notify','backup'];
+function backupData(){ const o={}; for(const k in S) if(!BK_SKIP.includes(k)) o[k]=S[k]; return o; }
+function looksLikeDiary(d){ return d && typeof d==='object' && d.days && typeof d.days==='object' && Array.isArray(d.attacks) && Array.isArray(d.doses); }
+function applyBackup(d){ const keep={}; BK_SKIP.forEach(k=>keep[k]=S[k]); S=Object.assign(d, keep, {onboarded:true, sample:false}); migrate(); day(TODAY()); save(); }
+const BK_ABC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newBkCode = () => Array.from(crypto.getRandomValues(new Uint8Array(20)),b=>BK_ABC[b&31]).join('').replace(/(.{5})(?=.)/g,'$1-');
+const cleanBkCode = s => { const c=String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); return c.length===20 && [...c].every(x=>BK_ABC.includes(x)) ? c.replace(/(.{5})(?=.)/g,'$1-') : null; };
+async function bkId(code){ const h=await crypto.subtle.digest('SHA-256', new TextEncoder().encode('mouch-backup:'+code)); return Array.from(new Uint8Array(h),b=>b.toString(16).padStart(2,'0')).join(''); }
+async function bkKey(code, salt){
+  const k=await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:150000, hash:'SHA-256'}, k, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+let bkTimer=null, bkSent='';
+function queueBackup(){ if(!S.backup||!S.backup.code) return; clearTimeout(bkTimer); bkTimer=setTimeout(()=>backupNow(true), 20000); }
+async function backupNow(quiet){
+  clearTimeout(bkTimer); bkTimer=null;
+  const code=S.backup&&S.backup.code; if(!code) return false;
+  const txt=JSON.stringify({saved:new Date().toISOString(), data:backupData()});
+  if(quiet && txt.slice(txt.indexOf('"data"'))===bkSent) return true;
+  try{
+    const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+    const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, await bkKey(code, salt), new TextEncoder().encode(txt)));
+    let bin=''; for(let i=0;i<ct.length;i+=0x8000) bin+=String.fromCharCode(...ct.subarray(i,i+0x8000));
+    const r=await fetch('/api/backup',{method:'PUT', headers:{'content-type':'application/json', authorization:'Bearer '+await bkId(code)}, body:JSON.stringify({v:1, salt:b64(salt), iv:b64(iv), data:btoa(bin)})});
+    if(!r.ok) throw new Error(await r.text());
+    bkSent=txt.slice(txt.indexOf('"data"')); S.backup.last=(await r.json()).saved; S.backup.err=null;
+  }catch(e){ S.backup.err=navigator.onLine===false?'Offline. It will try again.':'Last try failed. It will try again.'; if(!quiet) toast(S.backup.err); }
+  try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){}
+  if(!quiet || (V.view==='prefs' && !(document.activeElement && document.activeElement.matches('input,textarea')))) softRender();
+  return !S.backup.err;
+}
+async function fetchBackup(code){
+  const r=await fetch('/api/backup',{headers:{authorization:'Bearer '+await bkId(code)}});
+  if(r.status===404) throw new Error('No backup found for this code. Check it and try again.');
+  if(!r.ok) throw new Error('Could not reach the backup. Are you online?');
+  const b=await r.json();
+  let pt; try{ pt=await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(b.iv)}, await bkKey(code, unb64(b.salt)), unb64(b.data)); }
+  catch(e){ throw new Error('This code doesn\'t open that backup.'); }
+  const o=JSON.parse(new TextDecoder().decode(pt));
+  if(!looksLikeDiary(o.data)) throw new Error('That backup is damaged.');
+  return o;
+}
+function backupFile(){
+  const txt=JSON.stringify({app:'Mouch!', kind:'backup', v:1, saved:new Date().toISOString(), data:backupData()});
+  const name='mouch-backup-'+TODAY()+'.json', f=new File([txt], name, {type:'application/json'});
+  if(navigator.canShare && navigator.canShare({files:[f]})){ navigator.share({files:[f], title:name}).then(()=>{ S.backup.file=new Date().toISOString(); save(); softRender(); }, e=>{ if(e.name!=='AbortError') toast('Could not share the file'); }); return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(f); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+  S.backup.file=new Date().toISOString(); save(); softRender();
+}
+function readBackupFile(file){
+  file.text().then(t=>{
+    let o; try{ o=JSON.parse(t); }catch(e){ toast('That isn\'t a Mouch! backup file'); return; }
+    const d=o&&o.kind==='backup'?o.data:o;
+    if(!looksLikeDiary(d)){ toast(o&&o.app==='Mouch!'?'That\'s an export for Claude, not a backup':'That isn\'t a Mouch! backup file'); return; }
+    V.restore={data:d, saved:o.saved||null, from:'file'}; render();
+  });
+}
+const bkSummary = d => { const n=Object.values(d.days||{}).filter(x=>x&&x.rating).length; return n+' rated day'+(n===1?'':'s')+' · '+(d.attacks||[]).length+' attack'+((d.attacks||[]).length===1?'':'s')+' · '+(d.doses||[]).length+' dose'+((d.doses||[]).length===1?'':'s'); };
+const whenStr = iso => { const d=new Date(iso); return (key(d)===TODAY()?'today':fmtShort(key(d)))+' at '+fmt12(hm(d)); };
+
 /* ---------- render ---------- */
 let lastVK='';
 function render(){
@@ -1391,7 +1473,7 @@ const A = {
   openDay:k=>{ V.dayKey=k; go('day'); },
   toggleDayHeadache:()=>{ if(!editable(V.dayKey)) return; const d=day(V.dayKey); d.headache=!d.headache; save(); render(); },
   askDel:()=>{ V.confirmDel=true; render(); },
-  delDay:v=>{ if(v==='1'&&editable(V.dayKey)){ delete S.days[V.dayKey]; S.attacks=S.attacks.filter(a=>a.date!==V.dayKey); S.doses=S.doses.filter(d=>d.date!==V.dayKey); save(); V.confirmDel=false; go('calendar'); toast('Deleted'); } else { V.confirmDel=false; render(); } },
+  delDay:v=>{ if(v==='1'&&editable(V.dayKey)){ const snap=snapshot(); delete S.days[V.dayKey]; S.attacks=S.attacks.filter(a=>a.date!==V.dayKey); S.doses=S.doses.filter(d=>d.date!==V.dayKey); save(); V.confirmDel=false; go('calendar'); toastUndo('Day deleted', snap); } else { V.confirmDel=false; render(); } },
   openAttack:id=>{ V.atk=id; V.expandUnusual=false; go('attack'); },
   calMove:d=>{ const t=NOW(); let [y,m]=V.calMonth||[t.getFullYear(),t.getMonth()]; m+=+d; if(m<0){m=11;y--;} if(m>11){m=0;y++;} V.calMonth=[y,m]; render(); },
   insMove:d=>{ const t=NOW(); let [y,m]=V.insMonth||[t.getFullYear(),t.getMonth()]; m+=+d; if(m<0){m=11;y--;} if(m>11){m=0;y++;} if(y*12+m>t.getFullYear()*12+t.getMonth()) return; V.insMonth=[y,m]; render(); },
@@ -1425,11 +1507,12 @@ const A = {
   atkOver:()=>{ const a=S.attacks.find(x=>x.id===V.atk); a.end=hm(NOW()); a.done=true; S.live=null; save(); render(); },
   atkDone:()=>{ save(); go('today'); toast('Attack saved'); },
   atkCancel:()=>{ if(!V.atkDel){ V.atkDel=true; render(); setTimeout(()=>{ if(V.atkDel){ V.atkDel=false; if(V.view==='attack') render(); } },4000); return; } V.atkDel=false; A.atkDelete(); },
-  atkDelete:()=>{ S.doses.forEach(d=>{ if(d.atk===V.atk) d.atk=null; }); S.attacks=S.attacks.filter(x=>x.id!==V.atk); if(S.live===V.atk) S.live=null; save(); go('today'); toast('Attack deleted'); },
+  atkDelete:()=>{ const snap=snapshot(); S.doses.forEach(d=>{ if(d.atk===V.atk) d.atk=null; }); S.attacks=S.attacks.filter(x=>x.id!==V.atk); if(S.live===V.atk) S.live=null; save(); go('today'); toastUndo('Attack deleted', snap); },
   atkT:(f,dir)=>{ const a=S.attacks.find(x=>x.id===V.atk); a[f]=STEP15(a[f]||a.start,+dir); save(); render(); },
   peak:dir=>{ const a=S.attacks.find(x=>x.id===V.atk); a.peak=clamp((a.peak||0)+ +dir,0,10); save(); render(); },
   dose:id=>{ const a=S.attacks.find(x=>x.id===V.atk), m=S.meds.find(x=>x.id===id); S.doses.push({id:'d'+Date.now(),med:m.name,date:a.date,time:a.done?a.start:hm(NOW()),qty:1,atk:a.id,relief:null}); save(); render(); toast(m.name+' logged'); },
-  undoDose:id=>{ S.doses=S.doses.filter(x=>x.id!==id); save(); render(); toast('Removed'); },
+  undoDose:id=>{ const snap=snapshot(), d=S.doses.find(x=>x.id===id); S.doses=S.doses.filter(x=>x.id!==id); save(); render(); toastUndo((d?d.med:'Dose')+' removed', snap); },
+  undo:()=>{ if(!UNDO) return; Object.assign(S, JSON.parse(UNDO)); UNDO=null; $('#layer').querySelectorAll('.toast').forEach(x=>x.remove()); save(); render(); toast('Put back'); },
   logMed:id=>{ const m=S.meds.find(x=>x.id===id); const live=S.live&&S.attacks.find(x=>x.id===S.live); S.doses.push({id:'d'+Date.now(),med:m.name,date:TODAY(),time:hm(NOW()),qty:1,atk:live?live.id:null,relief:null}); save(); render(); toast(m.name+' logged'); },
   doseRelief:(id,v)=>{ const d=S.doses.find(x=>x.id===id); if(d) d.relief=v; save(); render(); },
   sym:s=>{ s=decodeURIComponent(s); const a=S.attacks.find(x=>x.id===V.atk); a.symptoms=a.symptoms.includes(s)?a.symptoms.filter(x=>x!==s):a.symptoms.concat(s); save(); render(); },
@@ -1465,7 +1548,7 @@ const A = {
   medToggle:id=>{ const m=S.meds.find(x=>x.id===id); m.active=!m.active; save(); render(); },
   medCls:c=>{ V.newMedCls=c; render(); },
   medAdd:()=>{ const n=V.newMed.trim(); if(!n) return; S.meds.push({id:'m'+Date.now(),name:n,cls:V.newMedCls==='triptan'?'triptan':'simple',nsaid:V.newMedCls==='nsaid',active:true}); V.newMed=''; save(); render(); toast('Added'); },
-  tagDel:i=>{ S.tags.splice(+i,1); save(); render(); },
+  tagDel:i=>{ const snap=snapshot(), t=S.tags[+i]; S.tags.splice(+i,1); save(); render(); toastUndo('Tag “'+t+'” removed', snap); },
   tagAdd:()=>{ const t=V.newTag.trim().toLowerCase(); if(t&&!allTags().includes(t)) S.tags.push(t); V.newTag=''; save(); render(); },
   thresh:dir=>{ S.weather.threshold=clamp(S.weather.threshold+ +dir,2,12); save(); render(); },
   lastWd:v=>{ S.weather.lastWorkday=v; save(); render(); },
@@ -1502,6 +1585,22 @@ const A = {
   lockNow:()=>{ V.locked=true; V.passIn=''; V.passErr=''; render(); },
   unlock:async()=>{ if(await checkPass(V.passIn)){ V.locked=false; V.passIn=''; V.passErr=''; render(); afterUnlock(); } else { V.passErr='That\'s not it. Try again.'; V.passIn=''; render(); } },
   forgot:v=>{ V.forgot=v==='1'; V.delTyped=''; render(); },
+  /* backup */
+  bkOn:async()=>{ V.bkBusy=true; render(); S.backup.code=newBkCode(); S.backup.last=null; save(); const ok=await backupNow(false); V.bkBusy=false; render(); if(ok) toast('Backup is on. Save your code'); },
+  bkNow:async()=>{ V.bkBusy=true; render(); const ok=await backupNow(false); V.bkBusy=false; render(); if(ok) toast('Backed up'); },
+  bkCopy:()=>{ const c=S.backup.code; if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(c).then(()=>toast('Code copied'),()=>toast('Copy failed. Write it down')); else toast('Copy failed. Write it down'); },
+  bkOff:async()=>{ const code=S.backup.code; if(!code) return; if(!V.bkOffAsk){ V.bkOffAsk=true; toast('Tap again to delete the online copy'); setTimeout(()=>{ V.bkOffAsk=false; },4000); return; } V.bkOffAsk=false;
+    try{ await fetch('/api/backup',{method:'DELETE', headers:{authorization:'Bearer '+await bkId(code)}}); }catch(e){}
+    S.backup={code:null, last:null, file:S.backup.file, err:null}; save(); render(); toast('Online backup turned off'); },
+  bkRestore:async()=>{ const code=cleanBkCode(V.bkIn); if(!code){ toast('A backup code has 20 letters and numbers'); return; }
+    V.bkBusy=true; render();
+    try{ const o=await fetchBackup(code); V.restore={data:o.data, saved:o.saved, from:'code', code}; }
+    catch(e){ toast(e.message); }
+    V.bkBusy=false; render(); },
+  bkFile:()=>backupFile(),
+  bkPick:()=>{ const f=$('#bkFileIn'); if(f){ f.value=''; f.click(); } },
+  restoreNo:()=>{ V.restore=null; render(); },
+  restoreYes:()=>{ const R=V.restore; if(!R) return; applyBackup(JSON.parse(JSON.stringify(R.data))); if(R.code){ S.backup.code=R.code; S.backup.last=R.saved; S.backup.err=null; save(); } V.restore=null; V.bkIn=''; render(); toast('Diary restored'); },
   /* onboarding */
   obNext:()=>{ if(V.ob<5){ V.ob++; render(); } },
   obSkip:()=>{ V.ob=5; render(); }
@@ -1524,6 +1623,7 @@ document.addEventListener('input', e=>{
   V[k]=e.target.value;
   if(k==='delTyped'){ const b=document.querySelector('[data-a="wipe"]'); if(b){ const ok=V.delTyped==='DELETE'; b.disabled=!ok; b.style.opacity=ok?'1':'.4'; } }
 });
+document.addEventListener('change', e=>{ if(e.target.id==='bkFileIn' && e.target.files && e.target.files[0]) readBackupFile(e.target.files[0]); });
 document.addEventListener('keydown', e=>{ const di=e.target.dataset&&e.target.dataset.in; if(e.key==='Enter' && di==='passIn'){ e.preventDefault(); A.unlock(); } if(e.key==='Enter' && (di==='pass1'||di==='pass2')){ e.preventDefault(); if(di==='pass1'&&!V.pass2){ const p2=$('#pass2'); if(p2) p2.focus(); } else A.passSave(); } if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciTag'){ e.preventDefault(); A.ciTagAdd(); } if(e.key==='Enter' && e.target.dataset && e.target.dataset.in==='ciFood'){ e.preventDefault(); const b=document.querySelector('[data-a^="foodAdd:"]'); if(b) b.click(); } if(e.key==='Escape' && V.sheet){ A.sheetClose(); } });
 
 function maybeLate(){
@@ -1551,9 +1651,9 @@ if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('messa
 
 /* relock after 5 minutes away; fresh weather and Health on every return */
 let hiddenAt=0;
-function refresh(){ fetchWx(); pullHealth().then(n=>{ if(n && !V.locked) toast('Apple Health: '+n+' new update'+(n===1?'':'s')); }); queueSync(); }
+function refresh(){ queueBackup(); fetchWx(); pullHealth().then(n=>{ if(n && !V.locked) toast('Apple Health: '+n+' new update'+(n===1?'':'s')); }); queueSync(); }
 document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden){ hiddenAt=Date.now(); return; }
+  if(document.hidden){ hiddenAt=Date.now(); if(bkTimer) backupNow(true); return; }
   if(S.lock && hiddenAt && Date.now()-hiddenAt>5*60e3){ V.locked=true; V.passIn=''; V.passErr=''; V.forgot=false; render(); }
   else softRender();
   hiddenAt=0; refresh();
