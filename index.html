@@ -491,6 +491,7 @@ function fresh(){
 function migrate(){
   if(S.sample) S=Object.assign(fresh(), {name:S.name, theme:S.theme, nightDark:S.nightDark});
   if(!S.notify) S.notify={on:false, morning:'08:00', midday:'13:00', water:'16:00', evening:'19:30', rating:(S.reminder&&S.reminder.time)||'21:00', weather:true, doses:true, attack:true};
+  S.notify=Object.assign({followUps:2, followGap:60, waterEvery:90, waterFrom:'09:00', waterTo:'20:00', bed:'00:00', windDown:30, breakFrom:'10:00', breakTo:'18:00', breakfast:'08:30', lunch:'12:30', planCheck:'21:45'}, S.notify);
   if(!S.sections) S.sections={morning:'05:00', midday:'12:00', evening:'18:00'};
   if(!S.health) S.health={token:null, last:null};
   if(S.lock===undefined) S.lock=null;
@@ -1112,7 +1113,15 @@ function vPrefs(){
   const N=S.notify;
   const slot = (id,label,hint) => '<div class="lrow" style="flex-wrap:wrap"><span>'+label+'<span class="tiny" style="display:block">'+hint+'</span></span><span class="ctrls">'+(N[id]?stepper(fmt12(N[id]),'nT:'+id,label+' time'):'')+tog(!!N[id],'nOn:'+id,label)+'</span></div>';
   h+=grp('Notifications', '<div class="lrow"><span>Notifications<span class="tiny" style="display:block">'+(N.on?'On. Sent by the server, even when Mouch! is closed.':'Off')+'</span></span>'+tog(N.on,N.on?'pushOff':'pushOn','Notifications')+'</div>'
-    +(N.on?slot('morning','Morning log','"How did you sleep?"')+slot('midday','Midday log','Breakfast, lunch, water')+slot('water','Water','A glass of water')+slot('evening','Evening log','Dinner, coffee, screens')+slot('rating','Rate the day','Only if not rated yet')
+    +(N.on?slot('morning','Morning log','"How did you sleep?"')+slot('midday','Midday log','Breakfast, lunch, water')+slot('evening','Evening log','Dinner, coffee, screens')+slot('rating','Rate the day','Only if not rated yet')
+      +'<div class="lrow" style="flex-wrap:wrap"><span>Remind again until it\'s done<span class="tiny" style="display:block">Extra reminders for a log you haven\'t filled</span></span><span class="ctrls">'+stepper(N.followUps?N.followUps+' more':'Off','nNum:followUps','follow-ups')+'</span></div>'
+      +(N.followUps?'<div class="lrow"><span>Time between them</span>'+stepper(N.followGap+' min','nNum:followGap','time between reminders')+'</div>':'')
+      +'<div class="lrow" style="flex-wrap:wrap"><span>Water through the day<span class="tiny" style="display:block">Stops once you\'ve logged '+WATER_GOAL+' L</span></span><span class="ctrls">'+(N.waterEvery?stepper('every '+(N.waterEvery>=60?Math.floor(N.waterEvery/60)+' h'+(N.waterEvery%60?' '+N.waterEvery%60:''):N.waterEvery+' min'),'nNum:waterEvery','water interval'):'')+tog(!!N.waterEvery,'nZero:waterEvery','Water through the day')+'</span></div>'
+      +(N.waterEvery?'<div class="lrow"><span>From</span>'+stepper(fmt12(N.waterFrom),'nT:waterFrom','water from')+'</div><div class="lrow"><span>Until</span>'+stepper(fmt12(N.waterTo),'nT:waterTo','water until')+'</div>':slot('water','Water, once a day','A glass of water'))
+      +slot('breakfast','Breakfast','Eat with protein, keep your morning cup')+slot('lunch','Lunch','Don\'t skip it')
+      +slot('bed','Bedtime','Lights out')+(N.bed?'<div class="lrow" style="flex-wrap:wrap"><span>Wind-down reminder<span class="tiny" style="display:block">Screens off before bed</span></span><span class="ctrls">'+stepper(N.windDown?N.windDown+' min before':'Off','nNum:windDown','wind-down')+'</span></div>':'')
+      +slot('planCheck','Plan check','Tick today\'s experiment')
+      +'<p class="tiny" style="padding:8px 0">Screen breaks and "still working?" are set under Screen &amp; late work. Nothing but medicine and attack check-ins is sent during an attack, and reminders never pile up at the same minute.</p>'
       +'<div class="lrow"><span>Weather warning<span class="tiny" style="display:block">Big pressure change, bad air or strong UV tomorrow</span></span>'+tog(N.weather,'nFlag:weather','Weather warning')+'</div>'
       +'<div class="lrow"><span>"Did it help?"<span class="tiny" style="display:block">2 hours after a painkiller</span></span>'+tog(N.doses,'nFlag:doses','Did it help')+'</div>'
       +'<div class="lrow"><span>"Is it over?"<span class="tiny" style="display:block">4 hours into an attack</span></span>'+tog(N.attack,'nFlag:attack','Is it over')+'</div>'
@@ -1120,7 +1129,7 @@ function vPrefs(){
   h+=grp('Day log opens', SECS.map(s=>'<div class="lrow"><span>'+s.name+'</span>'+stepper(fmt12(S.sections[s.id]),'secT:'+s.id,s.name+' opens')+'</div>').join('')+'<p class="tiny" style="padding:4px 0 10px">Each part of the day\'s log unlocks at its time. Today and the 3 days before can be edited.</p>');
   h+=grp('Passcode', '<div class="lrow"><span>'+(S.lock?'On':'Off')+'<span class="tiny" style="display:block">Hides the diary on this phone. It doesn\'t encrypt it.</span></span><button class="btn sm" data-a="passChange">'+(S.lock?'Change':'Create')+'</button></div>'+(S.lock?'<div class="lrow"><span>Lock now</span><button class="btn sm" data-a="lockNow">Lock</button></div>':''));
   h+=grp('Apple Health', '<div class="lrow"><span>'+(S.health.token?'Connected':'Not connected')+'<span class="tiny" style="display:block">'+(S.health.last?'Last data '+fmtShort(S.health.last.slice(0,10))+', '+fmt12(hm(new Date(S.health.last))):'Sleep, steps, exercise, heart rate and cycle via an iPhone Shortcut')+'</span></span><button class="btn sm" data-a="sheet:health">'+(S.health.token?'Open':'Set up')+'</button></div>');
-  h+=grp('Screen &amp; late work', '<div class="lrow"><span>Tell me when I\'m still working</span>'+tog(sc.lateOn,'sc:lateOn','Late work notification')+'</div><div class="lrow"><span>After</span>'+stepper(fmt12(sc.lateAfter),'scLate','late-work time')+'</div><div class="lrow"><span>Workdays only<span class="tiny" style="display:block">Last workday: '+esc(S.weather.lastWorkday)+'</span></span>'+tog(sc.workdaysOnly,'sc:workdaysOnly','Workdays only')+'</div><div class="lrow"><span>Screen-break reminder</span>'+tog(sc.breakOn,'sc:breakOn','Screen break reminder')+'</div><div class="lrow"><span>After unbroken</span>'+stepper(Math.floor(sc.breakAfter/60)+' h '+pad(sc.breakAfter%60),'scBreak','break interval')+'</div><div class="lrow"><span>Heavy screen day from</span>'+stepper(sc.heavyFrom+' h','scHeavy','heavy day')+'</div>'
+  h+=grp('Screen &amp; late work', '<div class="lrow"><span>Tell me when I\'m still working</span>'+tog(sc.lateOn,'sc:lateOn','Late work notification')+'</div><div class="lrow"><span>After</span>'+stepper(fmt12(sc.lateAfter),'scLate','late-work time')+'</div><div class="lrow"><span>Workdays only<span class="tiny" style="display:block">Last workday: '+esc(S.weather.lastWorkday)+'</span></span>'+tog(sc.workdaysOnly,'sc:workdaysOnly','Workdays only')+'</div><div class="lrow"><span>Screen-break reminder<span class="tiny" style="display:block">Sent as notifications on workdays</span></span>'+tog(sc.breakOn,'sc:breakOn','Screen break reminder')+'</div><div class="lrow"><span>Every</span>'+stepper(Math.floor(sc.breakAfter/60)+' h '+pad(sc.breakAfter%60),'scBreak','break interval')+'</div><div class="lrow"><span>Work hours from</span>'+stepper(fmt12(S.notify.breakFrom),'nT:breakFrom','work hours from')+'</div><div class="lrow"><span>Work hours until</span>'+stepper(fmt12(S.notify.breakTo),'nT:breakTo','work hours until')+'</div><div class="lrow"><span>Heavy screen day from</span>'+stepper(sc.heavyFrom+' h','scHeavy','heavy day')+'</div>'
     +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('phone')+'<span>This phone<span class="tiny" style="display:block">Asked in the evening log. iPhone doesn\'t let any app read Screen Time.</span></span></span></div>'
     +'<div class="lrow"><span style="display:flex;gap:12px;align-items:center">'+ic('laptop')+'<span>Mac or PC<span class="tiny" style="display:block">Needs a desktop helper app. Not built yet.</span></span></span></div>');
   h+=grp('Medications', S.meds.map(m=>'<div class="lrow"><span>'+esc(m.name)+'<span class="tiny" style="display:block">'+(m.note?esc(m.note)+' · ':'')+(m.cls==='triptan'?'Triptan-type':m.nsaid?'NSAID':'Simple painkiller')+'</span></span><button class="pill'+(m.active?' on':'')+'" data-a="medToggle:'+m.id+'">'+(m.active?'Active':'Hidden')+'</button></div>').join('')+'<div class="lrow" style="flex-wrap:wrap"><input class="inp" id="newMed" placeholder="Medication name" value="'+esc(V.newMed)+'" data-in="newMed"><div class="seg" style="flex:1 1 100%">'+[['nsaid','NSAID'],['simple','Simple'],['triptan','Triptan']].map(o=>'<button class="'+(V.newMedCls===o[0]?'on':'')+'" data-a="medCls:'+o[0]+'">'+o[1]+'</button>').join('')+'</div><button class="btn sm dark" data-a="medAdd" style="flex:1 1 100%">Add medication</button></div>');
@@ -1337,6 +1346,14 @@ function vLock(){
 function vSheet(){
   const s=V.sheet; if(!s) return '';
   let h='<div class="scrim" data-a="sheetClose"><div class="sheet" role="dialog" aria-modal="true" data-stop="1"><span class="grab"></span>';
+  if(s.type==='water'){ const c=(S.days[TODAY()]||{}).ci, f=fluidsL(c), pct=Math.min(100,f/WATER_GOAL*100);
+    h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Water today</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div>'
+      +'<div style="display:flex;align-items:baseline;gap:8px"><span class="t-big num" style="font-size:44px">'+fmtL(f)+'</span><span class="small">of '+WATER_GOAL+' L</span></div>'
+      +'<div class="meter"><i style="width:'+pct+'%"></i></div>'
+      +'<div class="row2"><button class="btn dark" data-a="qW:water:0.25">'+ic('plus','s')+'Glass · 0.25 L</button><button class="btn dark" data-a="qW:water:0.5">'+ic('plus','s')+'Bottle · 0.5 L</button></div>'
+      +'<div class="row2">'+DRINKS.map(d=>'<button class="btn" data-a="qW:'+d[0]+':1">'+ic('plus','s')+esc(d[1])+'</button>').join('')+'</div>'
+      +((V.wHist||[]).length?'<button class="link" data-a="qWundo">Undo last</button>':'')
+      +'<p class="tiny">'+(f>=WATER_GOAL?'Goal reached. Water reminders stop for today.':'Reminders stop once you reach '+WATER_GOAL+' L.')+'</p>'; }
   if(s.type==='export'){ const json=JSON.stringify(exportObj(),null,2);
     h+='<div class="sec-h"><h2 style="font-weight:500;font-size:24px">Export for Claude</h2><button class="roundbtn" data-a="sheetClose" aria-label="Close">'+ic('close')+'</button></div><p class="small">Copy this and paste it into a Claude chat with: "Find my migraine patterns and reply only with JSON in the reply_format." In the installed app this saves a .json file.</p><pre class="json" id="exportJson">'+esc(json.slice(0,4000))+(json.length>4000?'\n…':'')+'</pre><button class="btn dark block" data-a="copyExport">'+ic('copy','s')+'Copy all ('+Math.round(json.length/1024)+' KB)</button>'; }
   if(s.type==='import'){ const r=V.importResult;
@@ -1505,15 +1522,21 @@ async function sendState(sub){
     const N=S.notify, tk=TODAY(), d=S.days[tk]||{}, secs=d.secs||{}, live=S.live&&S.attacks.find(a=>a.id===S.live);
     const at=(dk,t)=>{ const x=parse(dk); const [h,m]=t.split(':').map(Number); x.setHours(h,m,0,0); return x.toISOString(); };
     const body={deviceId:S.device, subscription:sub.toJSON(), timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone, location:{lat:S.weather.lat, lon:S.weather.lon},
-      prefs:{morning:N.morning, midday:N.midday, water:N.water, evening:N.evening, rating:N.rating, weather:N.weather, doses:N.doses, attackFollowUp:N.attack},
+      prefs:{morning:N.morning, midday:N.midday, water:N.water, evening:N.evening, rating:N.rating, weather:N.weather, doses:N.doses, attackFollowUp:N.attack,
+        followUps:N.followUps, followGap:N.followGap, waterEvery:N.waterEvery, waterFrom:N.waterFrom, waterTo:N.waterTo, waterGoal:WATER_GOAL,
+        bed:N.bed, windDown:N.windDown, breakEvery:S.screen.breakOn?S.screen.breakAfter:0, breakFrom:N.breakFrom, breakTo:N.breakTo,
+        workdays:S.screen.workdaysOnly?{Thu:[1,2,3,4],Fri:[1,2,3,4,5],Sat:[1,2,3,4,5,6]}[S.weather.lastWorkday]||[1,2,3,4,5]:[0,1,2,3,4,5,6],
+        lateAt:S.screen.lateOn?S.screen.lateAfter:null, breakfast:N.breakfast, lunch:N.lunch, planCheck:N.planCheck},
       pressureNudgeHpa:S.weather.threshold,
-      status:{date:tk, rated:d.rating!=null, morning:!!secs.morning, midday:!!secs.midday, evening:!!secs.evening, waterLow:!!(d.ci&&d.ci.waterMid==='low')},
+      status:{date:tk, rated:d.rating!=null, morning:!!secs.morning, midday:!!secs.midday, evening:!!secs.evening, waterLow:!!(d.ci&&d.ci.waterMid==='low'), waterL:Math.round(fluidsL(d.ci)*100)/100,
+        expDue:expsToday().length>0, expDone:expsToday().length>0 && expsToday().every(e=>e.done&&e.done[tk]!==undefined)},
       doses:S.doses.filter(x=>x.relief==null&&!S.dismissed.includes(x.id)&&Date.now()-doseAt(x)<8*3600e3).slice(-10).map(x=>({id:x.id, name:x.med, time:at(x.date,x.time)})),
       ongoingAttackStart: live ? at(live.date, live.start) : null};
     const r=await fetch('/api/subscribe',{method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)});
     return r.ok;
   }catch(e){ return false; }
 }
+const expsToday = () => (S.plan.experiments||[]).filter(e=>(!e.from||e.from<=TODAY()) && e.to && e.to>=TODAY());
 var syncTimer=null;
 function queueSync(){ if(!S.notify||!S.notify.on||!('serviceWorker' in navigator)) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>sendState(), 1500); }
 async function pushTest(){
@@ -1762,7 +1785,9 @@ const A = {
   pushOff:()=>{ pushOff(); toast('Notifications off'); },
   pushTest:()=>pushTest(),
   nT:(id,dir)=>{ S.notify[id]=STEP15(S.notify[id],+dir); save(); render(); },
-  nOn:id=>{ S.notify[id] = S.notify[id] ? null : {morning:'08:00',midday:'13:00',water:'16:00',evening:'19:30',rating:'21:00'}[id]; save(); render(); },
+  nOn:id=>{ S.notify[id] = S.notify[id] ? null : {morning:'08:00',midday:'13:00',water:'16:00',evening:'19:30',rating:'21:00',breakfast:'08:30',lunch:'12:30',bed:'00:00',planCheck:'21:45'}[id]; save(); render(); },
+  nNum:(id,dir)=>{ const R={followUps:[1,0,3],followGap:[15,15,180],waterEvery:[15,30,240],windDown:[15,0,90]}[id]; if(!R) return; S.notify[id]=clamp((S.notify[id]||0)+(+dir)*R[0],R[1],R[2]); save(); render(); },
+  nZero:id=>{ S.notify[id] = S.notify[id] ? 0 : ({waterEvery:90}[id]||60); save(); render(); },
   nFlag:f=>{ S.notify[f]=!S.notify[f]; save(); render(); },
   secT:(id,dir)=>{ S.sections[id]=STEP15(S.sections[id],+dir); save(); render(); },
   /* weather & health */
@@ -1840,6 +1865,7 @@ function handleOpen(x){
   if(V.locked || !S.onboarded){ pendingOpen=x; return; }
   if(['morning','midday','evening'].includes(x)){ if(!openCheckin(TODAY(), x)) go('today'); }
   else if(x==='plan') go('plan');
+  else if(x==='water'){ go('today'); V.sheet={type:'water'}; render(); }
   else if(x==='attack' && S.live) A.openLive();
   else go('today');
 }

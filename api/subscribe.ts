@@ -7,6 +7,7 @@ const TIME = /^\d{2}:\d{2}$/;
 const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
 const time = (v: unknown, fallback: string | null) => (v === null ? null : typeof v === 'string' && TIME.test(v) ? v : fallback);
+const num = (v: unknown, fallback: number, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback);
 
 /**
  * POST: create or update this device's push state (subscription, schedule,
@@ -52,12 +53,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       weather: typeof p.weather === 'boolean' ? p.weather : pp?.weather ?? true,
       doses: typeof p.doses === 'boolean' ? p.doses : pp?.doses ?? true,
       attackFollowUp: typeof p.attackFollowUp === 'boolean' ? p.attackFollowUp : pp?.attackFollowUp ?? true,
+      followUps: num(p.followUps, pp?.followUps ?? 2, 0, 3),
+      followGap: num(p.followGap, pp?.followGap ?? 60, 15, 240),
+      waterEvery: num(p.waterEvery, pp?.waterEvery ?? 90, 0, 360),
+      waterFrom: time(p.waterFrom, pp?.waterFrom ?? '09:00') ?? '09:00',
+      waterTo: time(p.waterTo, pp?.waterTo ?? '20:00') ?? '20:00',
+      waterGoal: num(p.waterGoal, pp?.waterGoal ?? 2, 0.5, 6),
+      bed: time(p.bed, pp?.bed ?? '00:00'),
+      windDown: num(p.windDown, pp?.windDown ?? 30, 0, 120),
+      breakEvery: num(p.breakEvery, pp?.breakEvery ?? 90, 0, 360),
+      breakFrom: time(p.breakFrom, pp?.breakFrom ?? '10:00') ?? '10:00',
+      breakTo: time(p.breakTo, pp?.breakTo ?? '18:00') ?? '18:00',
+      workdays: Array.isArray(p.workdays) ? p.workdays.filter((x: unknown) => Number.isInteger(x) && (x as number) >= 0 && (x as number) <= 6).slice(0, 7) : pp?.workdays ?? [1, 2, 3, 4, 5],
+      lateAt: time(p.lateAt, pp?.lateAt ?? '22:30'),
+      breakfast: time(p.breakfast, pp?.breakfast ?? '08:30'),
+      lunch: time(p.lunch, pp?.lunch ?? '12:30'),
+      planCheck: time(p.planCheck, pp?.planCheck ?? '21:45'),
     },
     pressureNudgeHpa: Number.isFinite(body.pressureNudgeHpa) ? Math.min(20, Math.max(1, body.pressureNudgeHpa)) : prev?.pressureNudgeHpa ?? 6,
     status:
       st && typeof st.date === 'string' && DATE.test(st.date)
-        ? { date: st.date, rated: !!st.rated, morning: !!st.morning, midday: !!st.midday, evening: !!st.evening, waterLow: !!st.waterLow }
-        : prev?.status ?? { date: '', rated: false, morning: false, midday: false, evening: false, waterLow: false },
+        ? { date: st.date, rated: !!st.rated, morning: !!st.morning, midday: !!st.midday, evening: !!st.evening, waterLow: !!st.waterLow, waterL: num(st.waterL, 0, 0, 10), expDue: !!st.expDue, expDone: !!st.expDone }
+        : prev?.status ?? { date: '', rated: false, morning: false, midday: false, evening: false, waterLow: false, waterL: 0, expDue: false, expDone: false },
     doses: Array.isArray(body.doses)
       ? body.doses
           .filter((x: { id?: unknown; name?: unknown; time?: unknown }) => typeof x?.id === 'string' && typeof x?.name === 'string' && typeof x?.time === 'string' && STAMP.test(x.time))

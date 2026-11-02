@@ -33,8 +33,9 @@ async function tomorrowConditions(lat: number, lon: number, today: string) {
 
 /**
  * Vercel cron, every 15 minutes. For each device: work out its local time,
- * send whatever is due (morning, midday, water, evening, rating, dose checks,
- * attack follow-up, tomorrow's weather), and remember what was sent.
+ * send whatever is due (day logs and their follow-ups, water, meals, screen
+ * breaks, late work, wind-down and bedtime, plan check, dose checks, attack
+ * follow-up, tomorrow's weather), and remember what was sent.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const secret = process.env.CRON_SECRET;
@@ -80,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     // Keep the sent log short: today and the two days before, plus dose/attack keys.
     const keep = new Set([local.date, ...[1, 2].map((n) => new Date(Date.parse(local.date) - n * 86400_000).toISOString().slice(0, 10))]);
-    s.sent = s.sent.filter((k) => (k.includes(':') && keep.has(k.slice(0, 10))) || k.startsWith('dose:') || k.startsWith('attack:')).slice(-60);
+    s.sent = s.sent.filter((k) => (k.includes(':') && keep.has(k.slice(0, 10))) || k.startsWith('dose:') || k.startsWith('attack:')).slice(-240);
     await writeDevice(s);
   }
   console.log('push-schedule', JSON.stringify(results));

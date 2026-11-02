@@ -19,7 +19,7 @@ One static `index.html` (vanilla JS, no build step), a web manifest and a servic
 
 Small Vercel functions in `api/` (state in a private Vercel Blob store, `mouch-store`):
 
-- `push-config`, `subscribe`, `push-schedule` — Web Push. The cron runs every 15 minutes and sends the morning, midday, water, evening and rating reminders in the phone's own time zone, plus "did it help?", "is it over?" and tomorrow's weather warning. The server only knows times and done/not-done flags, never diary entries.
+- `push-config`, `subscribe`, `push-schedule` — Web Push. The cron runs every 15 minutes, in the phone's own time zone. It sends the morning, midday and evening logs and the rating, each followed by up to 3 more reminders until it's done. It also sends water through the day until 2 L is logged, breakfast and lunch, screen breaks in work hours, "still working?", wind-down and bedtime, a plan check, "did it help?", "is it over?" and tomorrow's weather warning. Reminders never pile up at the same minute, and nothing but medicine and attack check-ins goes out during an attack. The server only knows times, done/not-done flags and litres of water, never diary entries.
 - `health-pair`, `health` — Apple Health inbox. An iPhone Shortcut posts sleep, steps, exercise, heart rate and cycle with a pairing token; Mouch! pulls and the server deletes. Setup steps are in Settings → Apple Health.
 
 Weather, air quality and UV come from Open-Meteo (no key). Phone Screen Time can't be read by any app on iPhone, so it's asked in the evening log.

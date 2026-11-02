@@ -14,6 +14,29 @@ export interface NotifyPrefs {
   weather: boolean;
   doses: boolean;
   attackFollowUp: boolean;
+  /** Extra reminders for an unfinished log (0-3), and the minutes between them. */
+  followUps: number;
+  followGap: number;
+  /** Water every N minutes between from and to (0 = only the single `water` time), until goal litres are logged. */
+  waterEvery: number;
+  waterFrom: string;
+  waterTo: string;
+  waterGoal: number;
+  /** Bedtime, and a wind-down reminder this many minutes before it (0 = none). */
+  bed: string | null;
+  windDown: number;
+  /** Screen breaks every N minutes inside work hours on workdays (0 = off). */
+  breakEvery: number;
+  breakFrom: string;
+  breakTo: string;
+  /** Weekdays that count as workdays, 0 = Sunday. */
+  workdays: number[];
+  /** "Still working?" on workdays at this time. */
+  lateAt: string | null;
+  breakfast: string | null;
+  lunch: string | null;
+  /** Evening check that today's plan experiment was ticked. */
+  planCheck: string | null;
 }
 
 export interface DeviceState {
@@ -24,7 +47,7 @@ export interface DeviceState {
   prefs: NotifyPrefs;
   pressureNudgeHpa: number;
   /** What's already filled today (client's local date), so done things aren't nagged. */
-  status: { date: string; rated: boolean; morning: boolean; midday: boolean; evening: boolean; waterLow: boolean };
+  status: { date: string; rated: boolean; morning: boolean; midday: boolean; evening: boolean; waterLow: boolean; waterL: number; expDue: boolean; expDone: boolean };
   /** Doses waiting for the 2-hour "did it help?" question. */
   doses: Array<{ id: string; name: string; time: string }>;
   ongoingAttackStart: string | null;
