@@ -1073,9 +1073,29 @@ function exportObj(){
     days:ks.filter(k=>S.days[k]).map(k=>Object.assign({date:k},S.days[k])), attacks:S.attacks.filter(a=>ks.includes(a.date)), meds:S.meds, doses:S.doses.filter(d=>ks.includes(d.date)), currentPlan:S.plan,
     reply_format:{findings:[{text:'',level:'hunch|worth testing|likely|confirmed'}],experiments:[{title:'',rule:'',from:'YYYY-MM-DD',to:'YYYY-MM-DD'}],food:[{rule:'',detail:'',until:'YYYY-MM-DD',why:''}],nudges:[{message:'',condition:'pressure_drop_tomorrow|short_sleep|skipped_meal|late_work|heavy_screen|high_risk',on:true}]}};
 }
+/* Plan import is forgiving: chat apps and phones change pasted text (code fences, curly quotes,
+   invisible spaces, a stray sentence before or after). Try the text as-is first, then cleaned. */
+function parsePlanText(txt){
+  const raw = String(txt||'');
+  const cut = t => { const a=t.indexOf('{'), b=t.lastIndexOf('}'); return a>=0 && b>a ? t.slice(a,b+1) : t; };
+  const tries = [];
+  tries.push(cut(raw));
+  let t = raw.replace(/```[a-zA-Z]*/g,'').replace(/[\u00A0\u2007\u202F]/g,' ').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'');
+  tries.push(cut(t));
+  t = t.replace(/[\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/g,'"').replace(/[\u2018\u2019\u201A\u201B\u2032]/g,"'");
+  tries.push(cut(t));
+  tries.push(cut(t).replace(/,\s*([}\]])/g,'$1'));
+  let lastErr = null;
+  for(const c of tries){ try{ const o=JSON.parse(c); if(o && typeof o==='object') return o; }catch(e){ lastErr=e; } }
+  if(raw.indexOf('{')<0) return {error:'No plan found. Paste Claude\'s whole reply, from the first { to the last }.'};
+  const m = lastErr && /position (\d+)/.exec(String(lastErr.message||''));
+  if(m){ const pos=+m[1], c=tries.at(-1); return {error:'Not valid JSON near: \u201C'+c.slice(Math.max(0,pos-30),pos+30).replace(/\s+/g,' ')+'\u201D. Copy the reply again, or ask Claude to resend it as one code block.'}; }
+  return {error:'This isn\'t valid JSON. Copy Claude\'s whole reply, from the first { to the last }.'};
+}
 function checkPlan(txt){
   let o; const errs=[];
-  try{ o=JSON.parse(txt); }catch(e){ return {ok:false, errs:['This isn\'t valid JSON. Copy Claude\'s whole reply, from the first { to the last }.']}; }
+  o=parsePlanText(txt);
+  if(o && o.error) return {ok:false, errs:[o.error]};
   if(!Array.isArray(o.findings)) errs.push('findings: missing or not a list');
   else o.findings.forEach((f,i)=>{ if(!f.text) errs.push('findings['+i+'].text: empty'); if(!['hunch','worth testing','likely','confirmed'].includes(f.level)) errs.push('findings['+i+'].level: use hunch, worth testing, likely or confirmed'); });
   (o.experiments||[]).forEach((e,i)=>{ if(!e.title) errs.push('experiments['+i+'].title: empty'); if(!/^\d{4}-\d\d-\d\d$/.test(e.to||'')) errs.push('experiments['+i+'].to: needs a date like 2026-11-30'); });
